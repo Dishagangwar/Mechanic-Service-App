@@ -98,4 +98,9 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.rules)
+    // The location tests drive the real FusedLocationProviderClient, so they need
+    // its mock-location API and the Task -> coroutine bridge.
+    androidTestImplementation(libs.play.services.location)
+    androidTestImplementation(libs.kotlinx.coroutines.play.services)
 }
