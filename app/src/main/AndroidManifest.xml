@@ -5,12 +5,20 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
-        Coarse only. A 5-25 km radius search does not need street-level precision, and
-        the narrower request is both easier to grant and less to justify. Declared as
-        optional so the app still installs and runs on a device with no location
-        hardware - the user can always type an area instead.
+        Both are declared, and the app works with either.
+
+        Coarse is the floor: a 5-25 km radius search does not need street-level
+        precision. But FINE has to be declared for the system to offer the
+        Precise/Approximate toggle at all - a runtime request for a permission that
+        is not in the manifest is silently ignored, which left every user on the
+        approximate grid (roughly 1-2 km on Android 12+) with no way to opt into
+        anything better even if they wanted to.
+
+        Optional as a feature so the app still installs on a device with no location
+        hardware - typing an area always works.
     -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature
         android:name="android.hardware.location"
         android:required="false" />

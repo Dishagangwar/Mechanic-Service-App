@@ -62,25 +62,41 @@ class LocationRepositoryImpl @Inject constructor(
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
 
+    override fun hasPreciseLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Asks for a *fresh* fix first and only falls back to the cached one.
+     *
+     * The order matters and used to be the other way round. `lastLocation` is
+     * whatever fix any app on the device obtained most recently — it can be hours
+     * old and a city away, and it is handed back with no indication of either. For
+     * a button the user just pressed labelled "use my current location", trusting
+     * that cache is how you end up showing somebody the wrong town. So the cached
+     * fix is now only accepted as a fallback, and only when it is recent and
+     * accurate enough to be worth having.
+     */
     override suspend fun currentLocation(): Resource<SearchLocation> {
         if (!hasLocationPermission()) {
             return Resource.Error("Location permission is needed to find garages near you.")
         }
 
         return try {
-            // lastLocation is effectively free when something else has recently asked
-            // for a fix; only pay for a fresh one when there is nothing cached.
-            val location = fusedClient.lastLocation.awaitOrNull()
-                ?: fusedClient.getCurrentLocation(
-                    CurrentLocationRequest.Builder()
-                        .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
-                        .setDurationMillis(FIX_TIMEOUT_MS)
-                        .build(),
-                    null
-                ).awaitOrNull()
-                ?: return Resource.Error(
-                    "Couldn't get a location fix. Try again outdoors, or search for your area."
+            val fresh = requestFreshFix()
+            val location = fresh ?: usableCachedFix()
+
+            if (location == null) {
+                return Resource.Error(
+                    if (hasPreciseLocationPermission()) {
+                        "Couldn't get a location fix. Try again near a window or outdoors, " +
+                            "or search for your area instead."
+                    } else {
+                        "Couldn't get a location fix. Search for your area instead, or allow " +
+                            "precise location for a better result."
+                    }
                 )
+            }
 
             Resource.Success(
                 SearchLocation(
@@ -95,6 +111,45 @@ class LocationRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Resource.Error("Couldn't determine your location. Try searching for your area.", e)
         }
+    }
+
+    /**
+     * Matches the requested priority to what was actually granted. Asking for high
+     * accuracy while holding only the coarse permission buys nothing — the platform
+     * still snaps the result to its approximate grid — and costs power.
+     */
+    private suspend fun requestFreshFix(): Location? = runCatching {
+        fusedClient.getCurrentLocation(
+            CurrentLocationRequest.Builder()
+                .setPriority(
+                    if (hasPreciseLocationPermission()) {
+                        Priority.PRIORITY_HIGH_ACCURACY
+                    } else {
+                        Priority.PRIORITY_BALANCED_POWER_ACCURACY
+                    }
+                )
+                .setDurationMillis(FIX_TIMEOUT_MS)
+                .setMaxUpdateAgeMillis(MAX_FIX_AGE_MS)
+                .build(),
+            null
+        ).awaitOrNull()
+    }.getOrNull()
+
+    /**
+     * The cached fix, but only if it is worth using. A failure reading it is
+     * swallowed on purpose: this is already the fallback path, and throwing here
+     * would turn a missing cache into a hard error.
+     */
+    private suspend fun usableCachedFix(): Location? = runCatching {
+        fusedClient.lastLocation.awaitOrNull()?.takeIf { it.isFreshEnough() }
+    }.getOrNull()
+
+    private fun Location.isFreshEnough(): Boolean {
+        val ageMs = System.currentTimeMillis() - time
+        if (ageMs > MAX_FIX_AGE_MS) return false
+        // A fix with no accuracy claim tells us nothing, so take it rather than
+        // discard a possibly fine one; a wildly imprecise claim we do discard.
+        return !hasAccuracy() || accuracy <= MAX_FIX_ACCURACY_M
     }
 
     override suspend fun search(query: String): Resource<List<SearchLocation>> {
@@ -256,6 +311,12 @@ class LocationRepositoryImpl @Inject constructor(
             Manifest.permission.ACCESS_FINE_LOCATION
         )
         const val MAX_RESULTS = 6
-        const val FIX_TIMEOUT_MS = 10_000L
+        const val FIX_TIMEOUT_MS = 15_000L
+
+        /** Older than this and a cached fix is no longer "where you are now". */
+        const val MAX_FIX_AGE_MS = 2 * 60 * 1000L
+
+        /** A cached fix vaguer than this is not worth searching around. */
+        const val MAX_FIX_ACCURACY_M = 1_000f
     }
 }

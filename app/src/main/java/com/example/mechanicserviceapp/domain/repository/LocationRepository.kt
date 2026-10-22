@@ -16,6 +16,13 @@ interface LocationRepository {
     fun hasLocationPermission(): Boolean
 
     /**
+     * True only for precise access. Coarse-only is deliberately supported, but the
+     * platform fuzzes it to roughly a 1-2 km grid, so it is worth knowing which one
+     * we have when choosing how hard to work for a fix and what to tell the user.
+     */
+    fun hasPreciseLocationPermission(): Boolean
+
+    /**
      * The device's current position, reverse-geocoded to a readable label.
      * Fails with a message if permission is missing or no fix can be obtained.
      */
