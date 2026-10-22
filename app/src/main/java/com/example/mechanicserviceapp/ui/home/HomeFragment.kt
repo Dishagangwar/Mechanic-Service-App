@@ -267,24 +267,7 @@ class HomeFragment : Fragment() {
 
                 if (mechanics.data.isEmpty()) {
                     countText.isVisible = false
-                    val where = state.location?.label.orEmpty()
-                    showState(
-                        iconRes = R.drawable.ic_error,
-                        title = getString(R.string.empty_title),
-                        // Different wording for "nothing here" vs "nothing matching",
-                        // because the fix is different: widen the radius, or drop a filter.
-                        message = if (state.hasFilters) {
-                            getString(R.string.empty_filtered_message, where)
-                        } else {
-                            getString(R.string.empty_message, where)
-                        },
-                        retryLabel = if (state.hasFilters) {
-                            getString(R.string.filter_clear)
-                        } else {
-                            getString(R.string.retry)
-                        },
-                        onRetry = if (state.hasFilters) ::clearFilters else null
-                    )
+                    renderEmpty(state)
                 } else {
                     stateView.stateContainer.isVisible = false
                     countText.isVisible = true
@@ -305,6 +288,48 @@ class HomeFragment : Fragment() {
             }
         }
     }
+
+    /**
+     * An empty list has three different causes and three different fixes, so it
+     * gets three different screens. Offering "Retry" for a region that was
+     * checked and genuinely has no garages just invites the user to wait for the
+     * same answer.
+     */
+    private fun renderEmpty(state: HomeUiState) {
+        val where = state.location?.label.orEmpty()
+        when {
+            state.hasFilters -> showState(
+                iconRes = R.drawable.ic_error,
+                title = getString(R.string.empty_title),
+                message = getString(R.string.empty_filtered_message, where),
+                retryLabel = getString(R.string.filter_clear),
+                onRetry = ::clearFilters
+            )
+
+            viewModel.canWiden -> showState(
+                iconRes = R.drawable.ic_location,
+                title = getString(R.string.empty_title),
+                message = getString(R.string.empty_message, where),
+                retryLabel = getString(R.string.empty_widen, nextRadiusLabel()),
+                onRetry = { viewModel.widenRadius() }
+            )
+
+            // Already at the widest radius: nothing left to widen to, so say so
+            // plainly instead of dangling a button that cannot help.
+            else -> showState(
+                iconRes = R.drawable.ic_error,
+                title = getString(R.string.empty_title),
+                message = getString(R.string.empty_widest_message, where),
+                retryLabel = getString(R.string.location_change),
+                onRetry = ::openLocationPicker
+            )
+        }
+    }
+
+    private fun nextRadiusLabel(): String =
+        SearchRadius.entries
+            .firstOrNull { it.km > viewModel.state.value.radius.km }
+            ?.label.orEmpty()
 
     private fun clearFilters() {
         bindingChips = true
@@ -334,6 +359,10 @@ class HomeFragment : Fragment() {
                 Snackbar.make(binding.root, R.string.coverage_failed, Snackbar.LENGTH_SHORT).show()
                 viewModel.onCoverageNoticeShown()
             }
+
+            // Handled by the empty state, which can actually offer a next step.
+            // A snackbar here would just repeat it.
+            is CoverageState.EmptyRegion -> viewModel.onCoverageNoticeShown()
 
             is CoverageState.Checking, is CoverageState.Idle -> Unit
         }

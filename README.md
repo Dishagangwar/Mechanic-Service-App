@@ -111,20 +111,40 @@ Three deliberate consequences:
 and filtering in Postgres: a bounding-box prefilter on btree indexes, then haversine on the
 survivors. No PostGIS or earthdistance extension needed.
 
-Regions nobody has searched yet are filled in on demand by the `nearby-import` Edge
-Function, which keeps a ledger of fetched regions in `search_tiles` (geohash precision 5,
-~5 km cells) so the second search in an area costs nothing. That work is server-side for
-four reasons: Overpass rejects requests with no `User-Agent` and sheds load with 502s, so
-it needs one polite caller with backoff rather than N phones; writing `mechanics` rows is
-forbidden to end users by RLS and needs the service-role key, which must never ship in an
-APK; one fetch per region is shared by everyone; and a paid provider's key would live in
-the same place.
+Regions nobody has searched are filled in on demand by the `nearby-import` Edge Function,
+which keeps a ledger of fetched regions in `search_tiles` (geohash precision 5, ~5 km
+cells) so the second search in an area costs nothing — and, with a metered provider, so it
+stays affordable.
 
-Swapping to a paid provider means replacing `fetchOverpass` and setting `SOURCE` — nothing
-else moves. Note the constraint that shaped the schema: Google's Maps Platform terms allow
-caching Places lat/lng for at most 30 consecutive days, which is why `mechanics` carries
-`coords_fetched_at` and `purge_expired_coordinates()` exists. OSM rows leave it null and
-are never purged.
+### Choosing a data provider
+
+**This is the decision that determines whether the app works everywhere.** It is set by the
+`PLACES_PROVIDER` env var on the Edge Function; `providers.ts` holds one adapter each.
+
+| Provider | Coverage | Storable? | Key needed |
+|---|---|---|---|
+| `osm` (default) | Good in metros, thin to absent elsewhere | Yes, ODbL, forever | No |
+| `google` | Effectively every Indian business, ~90% with a phone | **Coordinates: 30 days max** | Yes, billed |
+| `ola` | Strong Indian POI coverage, free tier | Check current terms | Yes |
+
+OpenStreetMap is the default because it needs no key and no billing, but measured over a
+10 km radius it does not support a promise of national coverage:
+
+```
+Koramangala  186      Ahmedabad   2      ← a city of 8 million
+T Nagar       53      Solapur     0
+Andheri       36      Bilaspur    0
+Salt Lake      8      (6 of 14 probes also hit Overpass 502s)
+```
+
+So: **OSM for a free demo, a commercial provider for real nationwide coverage.** Switching
+is one env var plus a key — no app change, no schema change, and nothing to redeploy on the
+client.
+
+Google's constraint shaped the schema. Its terms cap caching of Places lat/lng at 30
+consecutive days, so rows from it carry `coords_fetched_at`, the tile TTL drops to 25 days,
+and `purge_expired_coordinates()` nulls them on schedule. `place_id` may be kept, which is
+why it is the `external_id`. OSM rows leave `coords_fetched_at` null and are never purged.
 
 ## Error handling
 
@@ -197,9 +217,8 @@ The app needs its schema before it can show anything. Two steps, both one-off:
    without it every function, including the `SECURITY DEFINER` coordinate purge, is callable
    by anyone holding the anon key that ships in the APK.
 
-2. **Deploy the region importer** (optional). Without it the seven seeded cities work
-   normally and searching elsewhere simply finds nothing — the app degrades to a snackbar
-   rather than an error.
+2. **Deploy the region importer.** Not optional if the app is to work outside the seven
+   seeded cities — without it, every other region returns nothing, permanently.
 
    ```bash
    supabase functions deploy nearby-import
@@ -207,6 +226,18 @@ The app needs its schema before it can show anything. Two steps, both one-off:
 
    It reads `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`, all three
    of which Supabase injects into deployed functions automatically.
+
+   To use a commercial provider instead of OpenStreetMap, set its key as a secret — it
+   stays on the server and never reaches the APK:
+
+   ```bash
+   supabase secrets set PLACES_PROVIDER=google PLACES_API_KEY=<your-key>
+   supabase functions deploy nearby-import
+   ```
+
+   For `google`, enable **Places API (New)** on a Google Cloud project with billing, then
+   restrict the key to that API. For `ola`, get a key from the Ola Maps developer console.
+   Leave both unset to stay on OpenStreetMap.
 
 3. **Schedule the coordinate purge** (only if you switch to a provider with a retention
    limit, such as Google Places). Enable `pg_cron` under Database → Extensions, then run

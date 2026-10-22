@@ -1,15 +1,15 @@
 -- ===========================================================================
 -- apply_all.sql — everything, in order, in one file.
 --
--- Paste this into the Supabase dashboard SQL editor (SQL Editor > New query)
--- and run it once. It is idempotent: running it again is safe and will refresh
--- the seeded garages without touching any listing a garage owner has claimed.
+-- Paste into the Supabase dashboard SQL editor and run once. Idempotent:
+-- re-running refreshes the seeded garages without touching any listing a
+-- garage owner has claimed.
 --
--- Contents:
---   0001_schema.sql          tables, enums, the auth.users -> profiles trigger
+--   0001_schema.sql          tables, enums, auth.users -> profiles trigger
 --   0002_views_rpc.sql       mechanics_with_stats, nearby_mechanics(), my_requests()
---   0003_rls.sql             row level security + the request transition trigger
---   0004_function_grants.sql revokes PUBLIC's default EXECUTE (see that file)
+--   0003_rls.sql             row level security + request transition trigger
+--   0004_function_grants.sql revokes PUBLIC's default EXECUTE
+--   0005_ola_source.sql      allows 'ola' as a provider
 --   seed/0001_services       the 20-entry service catalog
 --   seed/0002_mechanics      206 real garages from OpenStreetMap (ODbL)
 --
@@ -833,6 +833,19 @@ revoke all on public.mechanics, public.services, public.mechanic_services,
                public.mechanic_hours, public.reviews, public.search_tiles,
                public.profiles, public.service_requests, public.mechanics_with_stats
   from anon;
+
+-- ========================= migrations/0005_ola_source.sql =========================
+
+-- ---------------------------------------------------------------------------
+-- 0005_ola_source.sql — allow 'ola' as a provider.
+--
+-- The importer can now be pointed at Ola Maps, and both `mechanics.source` and
+-- `search_tiles.source` are the `mechanic_source` enum, so the value has to
+-- exist before a row can carry it. Without this an Ola import fails on insert
+-- with "invalid input value for enum".
+-- ---------------------------------------------------------------------------
+
+alter type mechanic_source add value if not exists 'ola';
 
 -- ========================= seed/0001_services.sql =========================
 

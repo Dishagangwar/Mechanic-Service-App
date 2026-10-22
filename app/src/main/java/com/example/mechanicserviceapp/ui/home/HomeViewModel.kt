@@ -32,6 +32,15 @@ sealed interface CoverageState {
     data object Idle : CoverageState
     data object Checking : CoverageState
     data class Imported(val count: Int) : CoverageState
+
+    /**
+     * The region was checked and the provider genuinely had nothing. Distinct
+     * from [Failed], because the fix is different: a wider radius might help,
+     * retrying the same search will not.
+     */
+    data object EmptyRegion : CoverageState
+
+    /** The import itself failed — not deployed, provider down, no key. */
     data object Failed : CoverageState
 }
 
@@ -110,6 +119,21 @@ class HomeViewModel @Inject constructor(
         load()
     }
 
+    /**
+     * Widen the search. The single most useful thing to offer where a region is
+     * thinly mapped: 5 km around a small town can legitimately return nothing
+     * while 25 km returns plenty.
+     */
+    fun widenRadius(): Boolean {
+        val next = SearchRadius.entries.firstOrNull { it.km > _state.value.radius.km }
+            ?: return false
+        setRadius(next)
+        return true
+    }
+
+    val canWiden: Boolean
+        get() = SearchRadius.entries.any { it.km > _state.value.radius.km }
+
     fun clearFilters() {
         _state.update { it.copy(category = null, query = "") }
         load()
@@ -151,13 +175,15 @@ class HomeViewModel @Inject constructor(
 
             when (val result = repository.ensureCoverage(location, _state.value.radius.km)) {
                 is Resource.Success -> {
-                    val imported = !result.data.wasCached && result.data.mechanicCount > 0
+                    val fetched = !result.data.wasCached
+                    val imported = fetched && result.data.mechanicCount > 0
                     _state.update {
                         it.copy(
-                            coverage = if (imported) {
-                                CoverageState.Imported(result.data.mechanicCount)
-                            } else {
-                                CoverageState.Idle
+                            coverage = when {
+                                imported -> CoverageState.Imported(result.data.mechanicCount)
+                                // Checked, and the provider had nothing here.
+                                fetched -> CoverageState.EmptyRegion
+                                else -> CoverageState.Idle
                             }
                         )
                     }

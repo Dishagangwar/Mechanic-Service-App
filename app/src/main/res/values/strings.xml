@@ -128,6 +128,8 @@
     <string name="empty_title">No garages found</string>
     <string name="empty_message">No garages are listed near %1$s yet. Try a wider radius.</string>
     <string name="empty_filtered_message">No garages near %1$s match these filters.</string>
+    <string name="empty_widen">Search %1$s instead</string>
+    <string name="empty_widest_message">No garages are listed near %1$s, even at 25 km. Try a nearby town, or search a different area.</string>
     <string name="filter_all">All</string>
     <string name="filter_clear">Clear filters</string>
     <string name="search_hint">Search by name or area</string>
