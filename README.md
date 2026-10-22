@@ -65,7 +65,7 @@ data/
 di/           Hilt modules
 util/         Resource wrapper, error mapping, JSON field readers
 supabase/
-  migrations/ Schema, views + RPCs, RLS
+  migrations/ Schema, views + RPCs, RLS, function grants
   seed/       Service catalog, generated OSM garages
   functions/  nearby-import Edge Function
   apply_all.sql   all of the above in one pasteable file
@@ -191,6 +191,11 @@ The app needs its schema before it can show anything. Two steps, both one-off:
    paste the whole of `supabase/apply_all.sql`, and run it. It is idempotent, so running it
    again is safe and refreshes the seeded garages without touching any listing a garage
    owner has claimed.
+
+   Note that `0004_function_grants.sql` is not optional. PostgreSQL grants EXECUTE on a new
+   function to `PUBLIC`, and a later `GRANT` to a named role does not displace that — so
+   without it every function, including the `SECURITY DEFINER` coordinate purge, is callable
+   by anyone holding the anon key that ships in the APK.
 
 2. **Deploy the region importer** (optional). Without it the seven seeded cities work
    normally and searching elsewhere simply finds nothing — the app degrades to a snackbar
