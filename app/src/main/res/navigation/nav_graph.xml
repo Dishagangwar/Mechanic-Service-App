@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/authGateFragment">
+
+    <!--
+        Every auth hop pops what it came from: there is no sensible "back" out of the app
+        into a screen you are no longer entitled to see.
+    -->
+    <fragment
+        android:id="@+id/authGateFragment"
+        android:name="com.example.mechanicserviceapp.ui.auth.AuthGateFragment"
+        tools:layout="@layout/fragment_auth_gate">
+
+        <action
+            android:id="@+id/action_gate_to_signIn"
+            app:destination="@id/signInFragment"
+            app:popUpTo="@id/authGateFragment"
+            app:popUpToInclusive="true" />
+
+        <action
+            android:id="@+id/action_gate_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/authGateFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/signInFragment"
+        android:name="com.example.mechanicserviceapp.ui.auth.SignInFragment"
+        android:label="@string/sign_in_title"
+        tools:layout="@layout/fragment_sign_in">
+
+        <action
+            android:id="@+id/action_signIn_to_signUp"
+            app:destination="@id/signUpFragment" />
+
+        <action
+            android:id="@+id/action_signIn_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/signInFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/signUpFragment"
+        android:name="com.example.mechanicserviceapp.ui.auth.SignUpFragment"
+        android:label="@string/sign_up_title"
+        tools:layout="@layout/fragment_sign_up">
+
+        <!-- Clears sign-up and the sign-in underneath it in one hop. -->
+        <action
+            android:id="@+id/action_signUp_to_home"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/signInFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.mechanicserviceapp.ui.home.HomeFragment"
+        android:label="@string/home_title"
+        tools:layout="@layout/fragment_home">
+
+        <action
+            android:id="@+id/action_home_to_detail"
+            app:destination="@id/mechanicDetailFragment" />
+
+        <!-- Signing out must leave nothing behind to go back to. -->
+        <action
+            android:id="@+id/action_home_to_signIn"
+            app:destination="@id/signInFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/mechanicDetailFragment"
+        android:name="com.example.mechanicserviceapp.ui.detail.MechanicDetailFragment"
+        android:label="@string/detail_title">
+
+        <argument
+            android:name="mechanicId"
+            app:argType="string" />
+
+        <action
+            android:id="@+id/action_detail_to_request"
+            app:destination="@id/requestServiceFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/requestServiceFragment"
+        android:name="com.example.mechanicserviceapp.ui.request.RequestServiceFragment"
+        android:label="@string/request_title">
+
+        <argument
+            android:name="mechanicId"
+            app:argType="string" />
+        <argument
+            android:name="mechanicName"
+            app:argType="string" />
+        <argument
+            android:name="services"
+            app:argType="string[]" />
+    </fragment>
+</navigation>

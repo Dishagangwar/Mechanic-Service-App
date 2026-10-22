@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.MechanicServiceApp" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#7FA8E8</item>
+        <item name="colorOnPrimary">#04203F</item>
+        <item name="colorPrimaryContainer">#1B3355</item>
+        <item name="colorOnPrimaryContainer">#D6E2F5</item>
+        <item name="colorSecondary">@color/brand_accent</item>
+
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="colorSurface">@color/surface_dark</item>
+        <item name="colorOnSurface">@color/text_primary_dark</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_dark</item>
+        <item name="colorOutline">@color/divider_dark</item>
+
+        <item name="android:statusBarColor">@color/surface_dark</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+</resources>

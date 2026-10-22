@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The hero carries white text in both themes, so for dark mode it goes darker
+         rather than lighter — the light-mode blues would glare against a dark surface. -->
+    <color name="auth_header_start">#0D2A55</color>
+    <color name="auth_header_end">#1C4A8C</color>
+    <color name="auth_header_subtitle">#B9CCEA</color>
+    <color name="auth_logo_badge">#1FFFFFFF</color>
+    <!-- A touch lighter than surface_dark so the card still lifts off the background. -->
+    <color name="auth_card_bg">#171C24</color>
+</resources>

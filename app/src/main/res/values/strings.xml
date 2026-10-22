@@ -1,0 +1,86 @@
+<resources>
+    <string name="app_name">Instant Mechanic</string>
+
+    <!-- Home -->
+    <string name="home_title">Instant Mechanic</string>
+    <string name="home_subtitle">Mechanics near you</string>
+    <string name="mechanics_count">%1$d garages nearby</string>
+
+    <!-- Mechanic card / detail -->
+    <string name="status_open">Open now</string>
+    <string name="status_closed">Closed</string>
+    <string name="distance_format">%1$.1f km away</string>
+    <string name="rating_format">%1$.1f</string>
+    <string name="review_count_format">(%1$d reviews)</string>
+    <string name="services_label">Services offered</string>
+    <string name="working_hours_label">Working hours</string>
+    <string name="address_label">Address</string>
+    <string name="phone_label">Phone</string>
+    <string name="more_services_format">+%1$d more</string>
+    <string name="request_service">Request Service</string>
+    <string name="call_garage">Call</string>
+    <string name="detail_title">Garage details</string>
+
+    <!-- Request form -->
+    <string name="request_title">Request Service</string>
+    <string name="request_for_format">Booking with %1$s</string>
+    <string name="hint_customer_name">Your name</string>
+    <string name="hint_phone">Phone number</string>
+    <string name="hint_vehicle">Vehicle number</string>
+    <string name="hint_service">Select service</string>
+    <string name="hint_problem">Describe the problem</string>
+    <string name="submit_request">Submit Request</string>
+    <string name="submitting">Submitting…</string>
+
+    <!-- Confirmation -->
+    <string name="confirmation_title">Request confirmed</string>
+    <string name="confirmation_request_id">Request ID: %1$s</string>
+    <string name="confirmation_eta">A mechanic will reach you in about %1$d minutes.</string>
+    <string name="done">Done</string>
+
+    <!-- Auth -->
+    <string name="sign_in_title">Welcome back</string>
+    <string name="sign_in_subtitle">Sign in to book a mechanic near you.</string>
+    <string name="sign_up_title">Create your account</string>
+    <string name="sign_up_subtitle">A few details and you\'re ready to book.</string>
+    <string name="cd_app_logo">Instant Mechanic logo</string>
+    <string name="hint_email">Email address</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_confirm_password">Confirm password</string>
+    <string name="hint_full_name">Full name</string>
+    <string name="password_helper">8+ characters, with a letter and a number</string>
+    <string name="sign_in">Sign In</string>
+    <string name="signing_in">Signing in\u2026</string>
+    <string name="sign_up">Create Account</string>
+    <string name="signing_up">Creating account\u2026</string>
+    <string name="no_account_label">New here?</string>
+    <string name="create_account_action">Create an account</string>
+    <string name="have_account_label">Already have an account?</string>
+    <string name="sign_in_action">Sign in</string>
+    <string name="greeting_format">Hi, %1$s</string>
+
+    <!-- Email confirmation -->
+    <string name="verify_email_title">Confirm your email</string>
+    <string name="verify_email_message">We sent a confirmation link to %1$s. Open it, then come back and sign in.</string>
+    <string name="got_it">Got it</string>
+
+    <!-- Sign out -->
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_title">Sign out?</string>
+    <string name="sign_out_message">You\'ll need to sign in again to book a service.</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="setup_required_title">Supabase not configured</string>
+
+    <!-- States -->
+    <string name="error_title">Something went wrong</string>
+    <string name="retry">Retry</string>
+    <string name="empty_title">No mechanics found</string>
+    <string name="empty_message">We couldn\'t find any garages near you right now.</string>
+    <string name="no_dialer">No phone app available on this device.</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_rating">Rating</string>
+    <string name="cd_location">Location</string>
+    <string name="cd_back">Navigate up</string>
+</resources>

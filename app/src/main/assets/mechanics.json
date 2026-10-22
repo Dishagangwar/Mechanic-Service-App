@@ -1,0 +1,108 @@
+{
+  "mechanics": [
+    {
+      "id": "m-001",
+      "name": "Sharma Auto Works",
+      "rating": 4.6,
+      "review_count": 218,
+      "distance_km": 1.2,
+      "location": "Kothrud, Pune",
+      "address": "Shop 12, Paud Road, Kothrud, Pune 411038",
+      "phone": "+919822041122",
+      "is_open": true,
+      "working_hours": "Mon - Sat, 9:00 AM to 8:00 PM",
+      "services": ["Engine Repair", "Oil Change", "Brake Service", "Battery Replacement"]
+    },
+    {
+      "id": "m-002",
+      "name": "Speed Motors Garage",
+      "rating": 4.2,
+      "review_count": 96,
+      "distance_km": 2.4,
+      "location": "Baner, Pune",
+      "address": "Survey 88, Baner Road, Near Balewadi Phata, Pune 411045",
+      "phone": "+919011234567",
+      "is_open": true,
+      "working_hours": "Mon - Sun, 8:30 AM to 9:00 PM",
+      "services": ["Wheel Alignment", "Tyre Replacement", "AC Service", "Denting & Painting"]
+    },
+    {
+      "id": "m-003",
+      "name": "Krishna Car Care",
+      "rating": 4.8,
+      "review_count": 431,
+      "distance_km": 3.1,
+      "location": "Viman Nagar, Pune",
+      "address": "Plot 7, Nagar Road, Opp. Phoenix Mall, Pune 411014",
+      "phone": "+919765432100",
+      "is_open": false,
+      "working_hours": "Mon - Sat, 10:00 AM to 7:00 PM",
+      "services": ["Full Service", "Engine Repair", "Clutch Repair", "Diagnostics"]
+    },
+    {
+      "id": "m-004",
+      "name": "Bombay Bike Point",
+      "rating": 3.9,
+      "review_count": 52,
+      "distance_km": 0.8,
+      "location": "Deccan, Pune",
+      "address": "Lane 3, JM Road, Deccan Gymkhana, Pune 411004",
+      "phone": "+918888123456",
+      "is_open": true,
+      "working_hours": "Mon - Sat, 9:30 AM to 8:30 PM",
+      "services": ["Two Wheeler Service", "Chain Sprocket", "Oil Change", "Puncture Repair"]
+    },
+    {
+      "id": "m-005",
+      "name": "Highway Auto Solutions",
+      "rating": 4.4,
+      "review_count": 187,
+      "distance_km": 5.6,
+      "location": "Hinjewadi, Pune",
+      "address": "Phase 1, Hinjewadi IT Park Road, Pune 411057",
+      "phone": "+917722334455",
+      "is_open": true,
+      "working_hours": "Mon - Sun, 24 Hours",
+      "services": ["Towing", "Roadside Assistance", "Battery Jumpstart", "Engine Repair"]
+    },
+    {
+      "id": "m-006",
+      "name": "Patel Service Station",
+      "rating": 4.0,
+      "review_count": 74,
+      "distance_km": 4.2,
+      "location": "Hadapsar, Pune",
+      "address": "Solapur Road, Near Magarpatta Gate 2, Pune 411028",
+      "phone": "+919623456789",
+      "is_open": false,
+      "working_hours": "Mon - Sat, 9:00 AM to 6:30 PM",
+      "services": ["Oil Change", "Brake Service", "Suspension Work", "Car Wash"]
+    },
+    {
+      "id": "m-007",
+      "name": "Elite Motor Garage",
+      "rating": 4.7,
+      "review_count": 312,
+      "distance_km": 6.8,
+      "location": "Wakad, Pune",
+      "address": "Datta Mandir Road, Wakad, Pune 411057",
+      "phone": "+919334455667",
+      "is_open": true,
+      "working_hours": "Mon - Sat, 9:00 AM to 8:00 PM",
+      "services": ["Denting & Painting", "Insurance Claims", "Full Service", "AC Service"]
+    },
+    {
+      "id": "m-008",
+      "name": "Anand Auto Electricals",
+      "rating": 3.6,
+      "review_count": 41,
+      "distance_km": 2.9,
+      "location": "Shivajinagar, Pune",
+      "address": "Ganeshkhind Road, Shivajinagar, Pune 411005",
+      "phone": "+919812345670",
+      "is_open": true,
+      "working_hours": "Mon - Sat, 10:00 AM to 7:30 PM",
+      "services": ["Auto Electricals", "Battery Replacement", "Wiring Repair", "Diagnostics"]
+    }
+  ]
+}
