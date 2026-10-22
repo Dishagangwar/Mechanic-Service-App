@@ -15,9 +15,13 @@
 //                  from here carry `coords_fetched_at` and get purged. place_id
 //                  may be kept, which is why it is the external_id.
 //
-//   Ola Maps       Indian provider, strong local POI coverage, free tier. Check
-//                  its current terms for whether results may be stored before
-//                  relying on it; if they may, it avoids the 30-day dance.
+//   Ola Maps       Indian provider, free tier. Its platform terms carry no
+//                  retention cap of the kind Google imposes, so results may be
+//                  stored — but they require attribution to "Ola Maps" linked to
+//                  openstreetmap.org/copyright, and state the data is available
+//                  under the ODbL. Which says plainly that it is at least partly
+//                  OpenStreetMap-derived, so treat its coverage as unproven
+//                  until measured against a real key.
 //
 // Adding another provider means writing one `fetch` function that returns
 // NormalisedPlace[]. Nothing outside this file needs to change, and the API key
@@ -372,50 +376,134 @@ async function fetchGoogle(lat: number, lng: number, radiusM: number): Promise<N
 }
 
 // ---------------------------------------------------------------- Ola Maps
+//
+// Written against the published OpenAPI document
+// (maps.olakrutrim.com/openapi/ola-maps-apis-oas.yaml), not guessed:
+//
+//   GET https://api.olamaps.io/places/v1/nearbysearch/advanced
+//       location=lat,lng          REQUIRED
+//       types=car_repair,...      comma-separated; may return zero_results
+//       radius=<metres>           default 10000
+//       withCentroid=true         DEFAULT IS FALSE, and without it there are no
+//                                 coordinates in the response at all
+//       rankBy=distance|popular
+//       limit=<n>
+//       api_key=<key>
+//
+// The "advanced" variant is used rather than the plain one because it carries
+// phone, website and opening_hours inline; the basic endpoint would need a
+// separate Place Details call per result.
+//
+// Ola's taxonomy has no two-wheeler, tyre or parts type — a real gap in India,
+// where two-wheeler mechanics are a large share of the trade. The request can
+// only ask for the car-ish types, but the *response* carries OSM-style strings
+// in `types` (e.g. "amenity:cafe"), so the category is refined from those where
+// possible rather than flattening everything to "car".
+
+const OLA_REQUEST_TYPES = ["car_repair", "car_wash", "car_dealer"];
+
+/** Ola returns OSM-flavoured type strings; use them to recover a real category. */
+function olaCategory(types: unknown): string {
+  const joined = Array.isArray(types) ? types.join(" ").toLowerCase() : "";
+  if (/motorcycle|two_wheeler|bike/.test(joined)) return "motorcycle";
+  if (/tyre|tire/.test(joined)) return "tyres";
+  if (/car_parts|auto_parts|spare/.test(joined)) return "parts";
+  return "car";
+}
+
+/**
+ * `periods[].open.day` is an int, `time` a string. The documented example is
+ * literally "NA", so anything that is not four digits is treated as unknown
+ * rather than coerced — a wrong Open/Closed badge is worse than none.
+ */
+function parseOlaHours(openingHours: any): Hour[] | null {
+  const periods = openingHours?.periods;
+  if (!Array.isArray(periods) || !periods.length) return null;
+
+  const out: Hour[] = [];
+  const seen = new Set<number>();
+  for (const p of periods) {
+    const day = p?.open?.day;
+    const rawOpen = String(p?.open?.time ?? "");
+    const rawClose = String(p?.close?.time ?? "");
+    if (typeof day !== "number" || day < 0 || day > 6) continue;
+    if (!/^\d{4}$/.test(rawOpen) || !/^\d{4}$/.test(rawClose)) continue;
+
+    const opens = `${rawOpen.slice(0, 2)}:${rawOpen.slice(2)}`;
+    const closes = `${rawClose.slice(0, 2)}:${rawClose.slice(2)}`;
+    if (closes <= opens) continue;           // overnight spans: skip, don't invert
+    if (seen.has(day)) continue;
+    seen.add(day);
+    out.push({ day_of_week: day, opens, closes });
+  }
+  return out.length ? out : null;
+}
 
 async function fetchOla(lat: number, lng: number, radiusM: number): Promise<NormalisedPlace[]> {
   const key = Deno.env.get("PLACES_API_KEY");
   if (!key) throw new Error("PLACES_API_KEY is not set on the function.");
 
-  const url = new URL("https://api.olamaps.io/places/v1/nearbysearch");
+  const url = new URL("https://api.olamaps.io/places/v1/nearbysearch/advanced");
   url.searchParams.set("location", `${lat},${lng}`);
-  url.searchParams.set("types", "car_repair");
+  url.searchParams.set("types", OLA_REQUEST_TYPES.join(","));
   url.searchParams.set("radius", String(Math.min(radiusM, 50_000)));
+  url.searchParams.set("withCentroid", "true");
+  url.searchParams.set("rankBy", "distance");
+  url.searchParams.set("limit", "60");
   url.searchParams.set("api_key", key);
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  const res = await fetch(url, {
+    headers: { "X-Request-Id": crypto.randomUUID() },
+    signal: AbortSignal.timeout(30_000),
+  });
   if (!res.ok) {
-    throw new Error(`Ola Maps returned HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const body = (await res.text().catch(() => "")).slice(0, 200);
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`Ola Maps rejected the key (HTTP ${res.status}): ${body}`);
+    }
+    throw new Error(`Ola Maps returned HTTP ${res.status}: ${body}`);
   }
+
+  const payload = await res.json();
+  // A region with nothing matching comes back as a zero-results status rather
+  // than an error, which is a legitimate answer, not a failure.
+  const predictions = Array.isArray(payload?.predictions) ? payload.predictions : [];
 
   const out: NormalisedPlace[] = [];
   const seen = new Set<string>();
-  for (const p of (await res.json()).predictions ?? []) {
-    const name = p.structured_formatting?.main_text ?? p.description;
-    const id = p.place_id;
-    const latitude = p.geometry?.location?.lat;
-    const longitude = p.geometry?.location?.lng;
-    if (!name || !id || latitude == null || longitude == null) continue;
+  for (const p of predictions) {
+    if (p?.business_status && p.business_status !== "OPERATIONAL") continue;
+
+    const id = p?.place_id ?? p?.reference;
+    const name = (p?.structured_formatting?.main_text ?? p?.description ?? "").trim();
+    // withCentroid=true is what puts this here; without it every row is dropped.
+    const latitude = p?.geometry?.location?.lat;
+    const longitude = p?.geometry?.location?.lng;
+    if (!id || !name || typeof latitude !== "number" || typeof longitude !== "number") continue;
     if (isJunk(name, null) || seen.has(id)) continue;
     seen.add(id);
 
     out.push({
-      externalId: id,
-      name: String(name).trim(),
+      externalId: String(id),
+      name,
       nameEn: null,
-      category: "car",
-      phone: null,                       // not returned by nearbysearch
-      website: null,
+      category: olaCategory(p?.types),
+      phone: normalisePhone(p?.formatted_phone_number ?? p?.international_phone_number),
+      website: p?.website ?? p?.url ?? null,
       brand: null,
-      addressLine: p.structured_formatting?.secondary_text ?? p.description ?? null,
+      addressLine: p?.structured_formatting?.secondary_text ?? p?.description ?? null,
       locality: null,
       city: null,
       state: null,
       postcode: null,
       lat: latitude,
       lng: longitude,
-      openingHoursRaw: null,
-      hours: null,
+      openingHoursRaw: Array.isArray(p?.opening_hours?.weekday_text) && p.opening_hours.weekday_text.length
+        ? p.opening_hours.weekday_text.join("; ")
+        : null,
+      hours: parseOlaHours(p?.opening_hours),
+      // Ola exposes a `rating`, deliberately ignored: every rating in this app
+      // comes from a completed booking made through it.
       declaredServices: [],
     });
   }

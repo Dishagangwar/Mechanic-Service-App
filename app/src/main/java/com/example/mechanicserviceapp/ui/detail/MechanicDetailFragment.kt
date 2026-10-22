@@ -19,6 +19,7 @@ import com.example.mechanicserviceapp.R
 import com.example.mechanicserviceapp.databinding.FragmentMechanicDetailBinding
 import com.example.mechanicserviceapp.domain.model.Mechanic
 import com.example.mechanicserviceapp.ui.request.RequestServiceViewModel
+import com.example.mechanicserviceapp.util.Attribution
 import com.example.mechanicserviceapp.util.Resource
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
@@ -141,6 +142,10 @@ class MechanicDetailFragment : Fragment() {
                 R.string.services_inferred_note
             }
         )
+
+        val credit = Attribution.forSource(mechanic.source)
+        attributionText.isVisible = credit != null
+        attributionText.text = credit
 
         callButton.setOnClickListener { mechanic.phone?.let(::dial) }
 

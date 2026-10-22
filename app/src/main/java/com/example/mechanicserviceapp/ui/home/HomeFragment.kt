@@ -1,10 +1,12 @@
 package com.example.mechanicserviceapp.ui.home
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
@@ -24,6 +26,7 @@ import com.example.mechanicserviceapp.domain.model.SearchLocation
 import com.example.mechanicserviceapp.domain.model.SearchRadius
 import com.example.mechanicserviceapp.ui.detail.MechanicDetailViewModel
 import com.example.mechanicserviceapp.ui.location.LocationPickerFragment
+import com.example.mechanicserviceapp.util.Attribution
 import com.example.mechanicserviceapp.util.Resource
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -273,6 +276,7 @@ class HomeFragment : Fragment() {
                     countText.isVisible = true
                     countText.text = getString(R.string.mechanics_count, mechanics.data.size)
                 }
+                renderAttribution(mechanics.data)
             }
 
             is Resource.Error -> {
@@ -330,6 +334,29 @@ class HomeFragment : Fragment() {
         SearchRadius.entries
             .firstOrNull { it.km > viewModel.state.value.radius.km }
             ?.label.orEmpty()
+
+    /**
+     * Credit whoever actually supplied these rows. Required by all three
+     * providers, and they do not all want the same wording, so it follows the
+     * data rather than sitting hardcoded in the layout.
+     */
+    private fun renderAttribution(mechanics: List<Mechanic>) {
+        val credit = Attribution.forMechanics(mechanics)
+        binding.attributionText.isVisible = credit != null
+        binding.attributionText.text = credit
+
+        val sources = mechanics.map { it.source }.distinct()
+        if (Attribution.linksToOdbl(sources)) {
+            binding.attributionText.setOnClickListener {
+                runCatching {
+                    startActivity(Intent(Intent.ACTION_VIEW, Attribution.ODBL_URL.toUri()))
+                }
+            }
+        } else {
+            binding.attributionText.setOnClickListener(null)
+            binding.attributionText.isClickable = false
+        }
+    }
 
     private fun clearFilters() {
         bindingChips = true

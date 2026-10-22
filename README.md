@@ -125,7 +125,7 @@ stays affordable.
 |---|---|---|---|
 | `osm` (default) | Good in metros, thin to absent elsewhere | Yes, ODbL, forever | No |
 | `google` | Effectively every Indian business, ~90% with a phone | **Coordinates: 30 days max** | Yes, billed |
-| `ola` | Strong Indian POI coverage, free tier | Check current terms | Yes |
+| `ola` | Unproven — see below | Yes, with attribution | Yes, free tier |
 
 OpenStreetMap is the default because it needs no key and no billing, but measured over a
 10 km radius it does not support a promise of national coverage:
@@ -140,6 +140,34 @@ Salt Lake      8      (6 of 14 probes also hit Overpass 502s)
 So: **OSM for a free demo, a commercial provider for real nationwide coverage.** Switching
 is one env var plus a key — no app change, no schema change, and nothing to redeploy on the
 client.
+
+#### On Ola Maps
+
+Written against Ola's published OpenAPI document rather than guessed, which mattered —
+two details would each have broken the integration silently:
+
+- `withCentroid` **defaults to false**, and without it the response carries no coordinates
+  at all. Every result would have been dropped for want of a lat/lng.
+- The useful endpoint is `/places/v1/nearbysearch/advanced`, not the plain one. The basic
+  variant returns only name, location and place_id; the advanced one inlines phone,
+  website and opening hours, which otherwise costs a Place Details call per result.
+
+Its taxonomy has `car_repair`, `car_wash` and `car_dealer` but **no two-wheeler, tyre or
+parts type** — a real gap in India, where two-wheeler mechanics are a large share of the
+trade. The response does carry OSM-style type strings, so the adapter recovers a finer
+category from those where it can.
+
+Licensing is more permissive than Google's: the platform terms carry no retention cap, so
+results may be stored. But they require attribution reading "Ola Maps", linked to
+openstreetmap.org/copyright, and state the data is available under the **Open Database
+License** — which says plainly that it is at least partly OpenStreetMap-derived. Since OSM
+is the dataset measured above as near-empty outside metros, **treat Ola's coverage as
+unproven until it has been measured with a real key.** It may well be much better, because
+Ola has its own India-wide ride-hailing POI data to enrich with; that is a reason to test
+it, not a reason to assume.
+
+Attribution is handled in `util/Attribution.kt` and follows the rows actually on screen,
+since after a provider switch the table legitimately holds a mix.
 
 Google's constraint shaped the schema. Its terms cap caching of Places lat/lng at 30
 consecutive days, so rows from it carry `coords_fetched_at`, the tile TTL drops to 25 days,
