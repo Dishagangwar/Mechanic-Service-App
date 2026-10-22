@@ -22,6 +22,7 @@ import com.example.mechanicserviceapp.ui.request.RequestServiceViewModel
 import com.example.mechanicserviceapp.util.Attribution
 import com.example.mechanicserviceapp.util.Resource
 import com.google.android.material.chip.Chip
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -48,6 +49,12 @@ class MechanicDetailFragment : Fragment() {
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
         binding.stateView.stateRetryButton.setOnClickListener { viewModel.load() }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.claim.collect(::renderClaim)
+            }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -92,6 +99,49 @@ class MechanicDetailFragment : Fragment() {
      * would have driven is disabled — a call button that dials nothing is worse than
      * no call button.
      */
+    private fun renderClaim(state: ClaimState) {
+        when (state) {
+            is ClaimState.Done -> {
+                Snackbar.make(binding.root, state.message, Snackbar.LENGTH_SHORT).show()
+                viewModel.onClaimShown()
+            }
+
+            is ClaimState.Failed -> {
+                Snackbar.make(binding.root, state.message, Snackbar.LENGTH_LONG).show()
+                viewModel.onClaimShown()
+            }
+
+            is ClaimState.Idle, is ClaimState.Working -> Unit
+        }
+    }
+
+    /**
+     * Three ownership states, and only one of them is actionable: unclaimed
+     * listings can be claimed, your own can be released, and someone else's
+     * says so rather than offering a button that would be refused.
+     */
+    private fun bindOwnership(mechanic: Mechanic) = with(binding) {
+        val mine = mechanic.isOwnedBy(viewModel.currentUserId)
+
+        claimButton.isVisible = !mechanic.isClaimed
+        ownershipText.isVisible = mechanic.isClaimed
+        releaseButton.isVisible = mine
+
+        ownershipText.setText(
+            if (mine) R.string.garage_claimed_badge else R.string.garage_claimed_by_other
+        )
+
+        claimButton.setOnClickListener { viewModel.claim(mechanic.id) }
+        releaseButton.setOnClickListener {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.garage_release_title)
+                .setMessage(R.string.garage_release_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.garage_release) { _, _ -> viewModel.release(mechanic.id) }
+                .show()
+        }
+    }
+
     private fun bind(mechanic: Mechanic) = with(binding) {
         val context = requireContext()
 
@@ -146,6 +196,8 @@ class MechanicDetailFragment : Fragment() {
         val credit = Attribution.forSource(mechanic.source)
         attributionText.isVisible = credit != null
         attributionText.text = credit
+
+        bindOwnership(mechanic)
 
         callButton.setOnClickListener { mechanic.phone?.let(::dial) }
 

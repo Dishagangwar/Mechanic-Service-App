@@ -1,6 +1,7 @@
 package com.example.mechanicserviceapp.data.mapper
 
 import com.example.mechanicserviceapp.domain.model.CustomerRequest
+import com.example.mechanicserviceapp.domain.model.GarageRequest
 import com.example.mechanicserviceapp.domain.model.Mechanic
 import com.example.mechanicserviceapp.domain.model.MechanicCategory
 import com.example.mechanicserviceapp.domain.model.RequestStatus
@@ -44,7 +45,30 @@ fun JsonObject.toMechanic(): Mechanic? {
         openingHoursRaw = str("opening_hours_raw"),
         services = stringList("services"),
         hasDeclaredServices = bool("has_declared_services") ?: false,
-        source = str("source") ?: "manual"
+        source = str("source") ?: "manual",
+        ownerId = str("owner_id")
+    )
+}
+
+/** A row from `my_garage_requests()`. */
+fun JsonObject.toGarageRequest(): GarageRequest? {
+    val id = str("id") ?: return null
+
+    return GarageRequest(
+        id = id,
+        mechanicId = str("mechanic_id").orEmpty(),
+        mechanicName = str("mechanic_name") ?: "Your garage",
+        serviceName = str("service_name") ?: "Service",
+        customerName = str("customer_name").orEmpty(),
+        phoneNumber = str("phone_number").orEmpty(),
+        vehicleNumber = str("vehicle_number").orEmpty(),
+        problemDescription = str("problem_description").orEmpty(),
+        status = RequestStatus.fromWire(str("status")),
+        etaMinutes = int("eta_minutes"),
+        mechanicNote = str("mechanic_note"),
+        createdAt = str("created_at").orEmpty(),
+        customerRating = int("customer_rating"),
+        customerComment = str("customer_comment")
     )
 }
 

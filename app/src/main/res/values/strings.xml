@@ -79,6 +79,41 @@
     <string name="request_keep">Keep it</string>
     <string name="request_cancelled">Request cancelled.</string>
 
+    <!-- Garage side -->
+    <string name="garage_title">My garage</string>
+    <string name="garage_action">My garage</string>
+    <string name="garage_mine_label">Listings you manage</string>
+    <string name="garage_requests_label">Requests</string>
+    <string name="garage_requests_open_format">Requests (%1$d need you)</string>
+    <string name="garage_requests_empty">No requests yet. They\'ll appear here as customers book.</string>
+    <string name="garage_empty_title">You don\'t manage a garage yet</string>
+    <string name="garage_empty_message">Find your garage in the list and tap \"This is my garage\" to claim it. You\'ll then see every booking customers make.</string>
+    <string name="garage_find_action">Find my garage</string>
+    <string name="garage_claim">This is my garage</string>
+    <string name="garage_claimed_badge">You manage this garage</string>
+    <string name="garage_release">Release this garage</string>
+    <string name="garage_release_title">Release this garage?</string>
+    <string name="garage_release_message">You\'ll stop seeing its bookings. Someone else can then claim it.</string>
+    <string name="garage_claimed_by_other">Managed by another account</string>
+    <string name="garage_accept">Accept</string>
+    <string name="garage_accept_title">Accept %1$s\'s request</string>
+    <string name="garage_accept_explainer">Give a realistic ETA — the customer sees it straight away.</string>
+    <string name="garage_accept_confirm">Accept request</string>
+    <string name="garage_eta_hint">ETA</string>
+    <string name="garage_eta_suffix">minutes</string>
+    <string name="garage_eta_required">Enter an ETA in minutes</string>
+    <string name="garage_note_hint">Note for the customer (optional)</string>
+    <string name="garage_reject">Decline</string>
+    <string name="garage_reject_title">Decline this request?</string>
+    <string name="garage_reject_message">The customer will see that you can\'t take it on.</string>
+    <string name="garage_reject_confirm">Decline</string>
+    <string name="garage_start">Start work</string>
+    <string name="garage_complete">Mark complete</string>
+    <string name="garage_complete_title">Mark this job complete?</string>
+    <string name="garage_complete_message">The customer will be able to rate the work.</string>
+    <string name="garage_complete_confirm">Mark complete</string>
+    <string name="garage_rated_format">Customer rated this %1$d/5</string>
+
     <!-- Reviews -->
     <string name="review_action">Rate this garage</string>
     <string name="review_title">Rate %1$s</string>

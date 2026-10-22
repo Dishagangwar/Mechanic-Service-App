@@ -9,6 +9,7 @@ import com.example.mechanicserviceapp.domain.model.SearchRadius
 import com.example.mechanicserviceapp.domain.repository.AuthRepository
 import com.example.mechanicserviceapp.domain.repository.LocationRepository
 import com.example.mechanicserviceapp.domain.repository.MechanicRepository
+import com.example.mechanicserviceapp.util.Diag
 import com.example.mechanicserviceapp.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -94,7 +95,14 @@ class HomeViewModel @Inject constructor(
     }
 
     fun setLocation(location: SearchLocation, remember: Boolean = true) {
-        if (!location.isValid) return
+        Diag.log(
+            "setLocation '${location.label}' ${location.latitude},${location.longitude} " +
+                "origin=${location.origin} valid=${location.isValid} remember=$remember"
+        )
+        if (!location.isValid) {
+            Diag.warn("setLocation REJECTED as invalid")
+            return
+        }
         _state.update { it.copy(location = location, coverage = CoverageState.Idle) }
         if (remember) viewModelScope.launch { locationRepository.rememberLocation(location) }
         load()

@@ -27,6 +27,7 @@ import com.example.mechanicserviceapp.domain.model.SearchRadius
 import com.example.mechanicserviceapp.ui.detail.MechanicDetailViewModel
 import com.example.mechanicserviceapp.ui.location.LocationPickerFragment
 import com.example.mechanicserviceapp.util.Attribution
+import com.example.mechanicserviceapp.util.Diag
 import com.example.mechanicserviceapp.util.Resource
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -88,7 +89,11 @@ class HomeFragment : Fragment() {
             val latitude = bundle.getDouble(LocationPickerFragment.ARG_LAT, Double.NaN)
             val longitude = bundle.getDouble(LocationPickerFragment.ARG_LNG, Double.NaN)
             val label = bundle.getString(LocationPickerFragment.ARG_LABEL).orEmpty()
-            if (latitude.isNaN() || longitude.isNaN() || label.isBlank()) return@setFragmentResultListener
+            Diag.log("picker result received: '$label' $latitude,$longitude")
+            if (latitude.isNaN() || longitude.isNaN() || label.isBlank()) {
+                Diag.warn("picker result DISCARDED (nan or blank label)")
+                return@setFragmentResultListener
+            }
 
             viewModel.setLocation(
                 SearchLocation(latitude, longitude, label, SearchLocation.Origin.SEARCHED)
@@ -177,6 +182,11 @@ class HomeFragment : Fragment() {
             when (item.itemId) {
                 R.id.action_my_requests -> {
                     findNavController().navigate(R.id.action_home_to_myRequests)
+                    true
+                }
+
+                R.id.action_garage -> {
+                    findNavController().navigate(R.id.action_home_to_garage)
                     true
                 }
 

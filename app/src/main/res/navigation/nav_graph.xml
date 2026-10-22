@@ -76,6 +76,10 @@
             android:id="@+id/action_home_to_myRequests"
             app:destination="@id/myRequestsFragment" />
 
+        <action
+            android:id="@+id/action_home_to_garage"
+            app:destination="@id/garageFragment" />
+
         <!-- Signing out must leave nothing behind to go back to. -->
         <action
             android:id="@+id/action_home_to_signIn"
@@ -93,6 +97,17 @@
         android:name="com.example.mechanicserviceapp.ui.location.LocationPickerFragment"
         android:label="@string/location_title"
         tools:layout="@layout/fragment_location_picker" />
+
+    <fragment
+        android:id="@+id/garageFragment"
+        android:name="com.example.mechanicserviceapp.ui.garage.GarageFragment"
+        android:label="@string/garage_title"
+        tools:layout="@layout/fragment_garage">
+
+        <action
+            android:id="@+id/action_garage_to_detail"
+            app:destination="@id/mechanicDetailFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/myRequestsFragment"

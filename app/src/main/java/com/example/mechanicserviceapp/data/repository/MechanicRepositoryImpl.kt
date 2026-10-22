@@ -7,6 +7,7 @@ import com.example.mechanicserviceapp.domain.model.MechanicCategory
 import com.example.mechanicserviceapp.domain.model.SearchLocation
 import com.example.mechanicserviceapp.domain.model.ServiceOption
 import com.example.mechanicserviceapp.domain.repository.MechanicRepository
+import com.example.mechanicserviceapp.util.Diag
 import com.example.mechanicserviceapp.util.Resource
 import com.example.mechanicserviceapp.util.SupabaseConfig
 import com.example.mechanicserviceapp.util.asRows
@@ -70,6 +71,12 @@ class MechanicRepositoryImpl @Inject constructor(
             emit(Resource.Error("Choose a location to search around.")); return@flow
         }
 
+        Diag.log(
+            "getMechanics lat=${location.latitude} lng=${location.longitude} " +
+                "radius=${radiusKm}km label='${location.label}' origin=${location.origin} " +
+                "category=${category?.wireValue} query='${query.orEmpty()}'"
+        )
+
         try {
             val rows = postgrest.rpc(
                 function = "nearby_mechanics",
@@ -82,10 +89,17 @@ class MechanicRepositoryImpl @Inject constructor(
                 }
             ).data
 
-            val mechanics = json.parseToJsonElement(rows).asRows().mapNotNull { it.toMechanic() }
+            val parsed = json.parseToJsonElement(rows).asRows()
+            val mechanics = parsed.mapNotNull { it.toMechanic() }
+            Diag.log(
+                "getMechanics <- ${mechanics.size} mechanics (${parsed.size} raw rows), " +
+                    "sources=${mechanics.map { it.source }.distinct()}"
+            )
+            if (parsed.isEmpty()) Diag.log("getMechanics raw body: ${rows.take(300)}")
             cached = mechanics
             emit(Resource.Success(mechanics))
         } catch (e: Exception) {
+            Diag.warn("getMechanics FAILED", e)
             emit(Resource.Error(e.toUserMessage(), e))
         }
     }
@@ -126,6 +140,8 @@ class MechanicRepositoryImpl @Inject constructor(
         if (!SupabaseConfig.isConfigured) return Resource.Error(SupabaseConfig.SETUP_MESSAGE)
         if (!location.isValid) return Resource.Error("Choose a location to search around.")
 
+        Diag.log("ensureCoverage -> lat=${location.latitude} lng=${location.longitude} radius=${radiusKm}km")
+
         return try {
             val body = functions.invoke(
                 function = "nearby-import",
@@ -136,10 +152,15 @@ class MechanicRepositoryImpl @Inject constructor(
                 }
             ).bodyAsText()
 
+            Diag.log("ensureCoverage <- ${body.take(300)}")
+
             val payload = json.parseToJsonElement(body) as? JsonObject
                 ?: return Resource.Error("The coverage service returned something unexpected.")
 
-            payload.str("error")?.let { return Resource.Error(it) }
+            payload.str("error")?.let {
+                Diag.warn("ensureCoverage server error: $it")
+                return Resource.Error(it)
+            }
 
             Resource.Success(
                 CoverageResult(
@@ -149,6 +170,7 @@ class MechanicRepositoryImpl @Inject constructor(
                 )
             )
         } catch (e: Exception) {
+            Diag.warn("ensureCoverage FAILED", e)
             Resource.Error(e.toUserMessage(), e)
         }
     }

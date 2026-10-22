@@ -36,7 +36,9 @@ data class Mechanic(
     val services: List<String>,
     /** True when the garage itself listed its services, rather than us inferring them. */
     val hasDeclaredServices: Boolean,
-    val source: String
+    val source: String,
+    /** Who has claimed this listing, if anyone. Null means unclaimed. */
+    val ownerId: String?
 ) {
     /** What to show as the heading. */
     val displayName: String get() = name
@@ -53,6 +55,11 @@ data class Mechanic(
             .distinct().joinToString(", ").ifBlank { null }
 
     val hasPhone: Boolean get() = !phone.isNullOrBlank()
+
+    val isClaimed: Boolean get() = !ownerId.isNullOrBlank()
+
+    fun isOwnedBy(userId: String?): Boolean =
+        !userId.isNullOrBlank() && ownerId == userId
 }
 
 /**
