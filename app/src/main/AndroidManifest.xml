@@ -4,6 +4,17 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!--
+        Coarse only. A 5-25 km radius search does not need street-level precision, and
+        the narrower request is both easier to grant and less to justify. Declared as
+        optional so the app still installs and runs on a device with no location
+        hardware - the user can always type an area instead.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-feature
+        android:name="android.hardware.location"
+        android:required="false" />
+
     <!-- Lets the detail screen hand a number to whatever dialer the user has. -->
     <queries>
         <intent>

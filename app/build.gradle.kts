@@ -35,18 +35,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Base URL for the mechanics feed. Once this project is pushed to a public
-        // GitHub repo, point this at your own raw content URL and flip USE_MOCK_API
-        // to false to hit the network for real.
-        buildConfigField(
-            "String",
-            "BASE_URL",
-            "\"https://raw.githubusercontent.com/your-username/MechanicServiceApp/main/api/\""
-        )
-        // true  -> OkHttp interceptor serves the bundled assets/mechanics.json
-        // false -> real HTTPS request against BASE_URL
-        buildConfigField("boolean", "USE_MOCK_API", "true")
-
         // Supabase project credentials. Set SUPABASE_URL and SUPABASE_ANON_KEY in
         // local.properties; both are safe to ship in the APK (the anon key is the public
         // client key and is governed by row level security on the server).
@@ -91,17 +79,15 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
-    // Networking
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.moshi)
-    implementation(libs.okhttp.logging.interceptor)
-    implementation(libs.moshi)
-    implementation(libs.moshi.kotlin)
-
-    // Authentication
+    // Backend: Supabase auth, PostgREST data access, and Edge Function invocation.
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.functions)
     implementation(libs.ktor.client.okhttp)
+
+    // Location, for searching around where the user actually is.
+    implementation(libs.play.services.location)
 
     // Dependency injection
     implementation(libs.hilt.android)

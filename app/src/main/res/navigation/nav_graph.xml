@@ -68,6 +68,14 @@
             android:id="@+id/action_home_to_detail"
             app:destination="@id/mechanicDetailFragment" />
 
+        <action
+            android:id="@+id/action_home_to_locationPicker"
+            app:destination="@id/locationPickerFragment" />
+
+        <action
+            android:id="@+id/action_home_to_myRequests"
+            app:destination="@id/myRequestsFragment" />
+
         <!-- Signing out must leave nothing behind to go back to. -->
         <action
             android:id="@+id/action_home_to_signIn"
@@ -75,6 +83,22 @@
             app:popUpTo="@id/homeFragment"
             app:popUpToInclusive="true" />
     </fragment>
+
+    <!--
+        The location picker returns its choice through a fragment result rather than a
+        nav argument, because the caller is the one that owns the search state.
+    -->
+    <fragment
+        android:id="@+id/locationPickerFragment"
+        android:name="com.example.mechanicserviceapp.ui.location.LocationPickerFragment"
+        android:label="@string/location_title"
+        tools:layout="@layout/fragment_location_picker" />
+
+    <fragment
+        android:id="@+id/myRequestsFragment"
+        android:name="com.example.mechanicserviceapp.ui.requests.MyRequestsFragment"
+        android:label="@string/my_requests_title"
+        tools:layout="@layout/fragment_my_requests" />
 
     <fragment
         android:id="@+id/mechanicDetailFragment"

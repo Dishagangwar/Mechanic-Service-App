@@ -3,9 +3,12 @@ package com.example.mechanicserviceapp.ui.request
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mechanicserviceapp.domain.model.ServiceOption
 import com.example.mechanicserviceapp.domain.model.ServiceRequest
 import com.example.mechanicserviceapp.domain.model.ServiceRequestResult
 import com.example.mechanicserviceapp.domain.repository.MechanicRepository
+import com.example.mechanicserviceapp.domain.repository.ProfileRepository
+import com.example.mechanicserviceapp.domain.repository.RequestRepository
 import com.example.mechanicserviceapp.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,12 +38,45 @@ sealed interface SubmissionState {
 
 @HiltViewModel
 class RequestServiceViewModel @Inject constructor(
-    private val repository: MechanicRepository,
+    private val requestRepository: RequestRepository,
+    private val mechanicRepository: MechanicRepository,
+    private val profileRepository: ProfileRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val mechanicId: String = savedStateHandle[ARG_MECHANIC_ID]
         ?: error("RequestServiceFragment requires a '$ARG_MECHANIC_ID' argument")
+
+    private val mechanicName: String = savedStateHandle[ARG_MECHANIC_NAME] ?: ""
+
+    /**
+     * The service catalog, so the booking can store which service was picked rather
+     * than only its name. Loaded once; a failure here is not fatal because
+     * `service_id` is nullable and the name is stored on the row either way.
+     */
+    private var catalog: List<ServiceOption> = emptyList()
+
+    /** Pre-fills the form from the user's profile so they don't retype it every time. */
+    private val _prefill = MutableStateFlow<Prefill?>(null)
+    val prefill: StateFlow<Prefill?> = _prefill.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            when (val result = mechanicRepository.getServiceCatalog()) {
+                is Resource.Success -> catalog = result.data
+                else -> Unit
+            }
+        }
+        viewModelScope.launch {
+            val profile = profileRepository.myProfile()
+            if (profile is Resource.Success) {
+                _prefill.value = Prefill(
+                    name = profile.data.fullName,
+                    phone = profile.data.phoneNumber
+                )
+            }
+        }
+    }
 
     private val _errors = MutableStateFlow(FormErrors())
     val errors: StateFlow<FormErrors> = _errors.asStateFlow()
@@ -66,13 +102,17 @@ class RequestServiceViewModel @Inject constructor(
 
         viewModelScope.launch {
             _submission.value = SubmissionState.Submitting
-            val result = repository.submitServiceRequest(
+            val result = requestRepository.submit(
                 ServiceRequest(
                     mechanicId = mechanicId,
+                    mechanicName = mechanicName,
+                    // Matched by name because the form's options come from the garage's
+                    // own service list. Null simply means the catalog had no match.
+                    serviceId = catalog.firstOrNull { it.name == service }?.id,
+                    serviceName = service,
                     customerName = trimmedName,
                     phoneNumber = trimmedPhone,
                     vehicleNumber = trimmedVehicle,
-                    service = service,
                     problemDescription = trimmedProblem
                 )
             )
@@ -128,6 +168,9 @@ class RequestServiceViewModel @Inject constructor(
             else -> null
         }
     )
+
+    /** What we already know about the customer from their profile. */
+    data class Prefill(val name: String, val phone: String)
 
     companion object {
         const val ARG_MECHANIC_ID = "mechanicId"

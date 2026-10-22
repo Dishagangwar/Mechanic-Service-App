@@ -11,10 +11,11 @@ Built for the Android Development Internship assignment.
 | UI | XML Views + Fragments, Material 3 |
 | Architecture | MVVM + Repository, single-Activity |
 | Navigation | Jetpack Navigation Component |
-| Networking | Retrofit + OkHttp |
-| JSON | Moshi |
+| Backend | Supabase — Postgres + PostgREST + Auth + Edge Functions |
+| Data access | supabase-kt (`postgrest-kt`, `auth-kt`, `functions-kt`) |
 | Async | Coroutines + Flow / StateFlow |
-| Auth | Supabase (supabase-kt `auth-kt`) |
+| Location | Play Services location + Android `Geocoder` |
+| Garage data | OpenStreetMap via Overpass (ODbL) |
 | DI | Hilt |
 | View access | ViewBinding |
 
@@ -26,59 +27,104 @@ sits at the start of the graph and routes to home or sign-in once the stored ses
 been restored, so a returning user never sees the sign-in form. Home carries a sign-out
 action.
 
-**Home** — list of mechanics showing garage name, rating and review count, distance,
-location, the services offered as chips, and an open/closed badge. Pull to refresh.
+**Location picker** — the app has no built-in city. Search runs around a point the user
+chooses: their device location, a place they type ("Kolhapur", "Baner Pune", a pincode,
+resolved with Android's own `Geocoder`), or the location they used last, which is stored
+on their profile. Granting location is optional throughout — typing an area always works.
 
-**Mechanic details** — garage name, rating, full address, working hours, phone number
-(tap to open the dialer), every service offered, and a *Request Service* button.
+**Home** — garages near the chosen location, nearest first, with a radius control
+(5 / 10 / 25 km), category filters, and a name/area search. Pull to refresh. Opening a
+region nobody has searched before triggers a one-off import on the server.
 
-**Request service** — form for customer name, phone number, vehicle number, service
-(populated from the selected garage's own service list) and a problem description.
-Validates every field, then shows a confirmation dialog with a request ID and ETA.
+**Mechanic details** — name, rating, address, hours, phone (tap to dial), services, and a
+*Request Service* button. Every one of those can legitimately be missing, and the screen
+says so rather than filling the gap.
+
+**Request service** — name and phone arrive pre-filled from the user's profile. Service
+options come from the garage's own list. Submitting writes a real row and the confirmation
+reports that the request has been *sent*, with no ETA — the garage has not seen it yet.
+
+**My requests** — every booking with its live status, the ETA once a garage commits to
+one, cancel while still pending or accepted, and a star rating once the work is marked
+completed.
 
 ## Architecture
 
 ```
-ui/           Fragments, ViewModels, RecyclerView adapter
-  auth/       Gate, sign-in and sign-up screens + shared field validation
-domain/       Models + the repository interface the UI talks to
+ui/           Fragments, ViewModels, RecyclerView adapters
+  auth/       Gate, sign-in and sign-up + shared field validation
+  home/       Garage list, filters, location bar
+  location/   Location picker (device / typed / last used)
+  detail/     Garage details
+  request/    Booking form
+  requests/   Booking history, cancel, rate
+domain/       Models + the repository interfaces the UI talks to
 data/
-  remote/     Retrofit service, DTOs, mock interceptor
-  mapper/     DTO -> domain
-  repository/ Repository implementation
+  mapper/     PostgREST rows -> domain
+  repository/ Mechanic, Request, Location, Profile, Auth implementations
 di/           Hilt modules
-util/         Resource wrapper, error mapping
+util/         Resource wrapper, error mapping, JSON field readers
+supabase/
+  migrations/ Schema, views + RPCs, RLS
+  seed/       Service catalog, generated OSM garages
+  functions/  nearby-import Edge Function
+  apply_all.sql   all of the above in one pasteable file
 ```
 
 The UI never sees a DTO. `Resource<T>` (`Loading` / `Success` / `Error`) is the single
 stream each screen renders from, so loading and error handling are structural rather
 than bolted on per screen.
 
-## API layer
+## Data: where the garages come from
 
-The app runs the full Retrofit → OkHttp → Moshi → repository → ViewModel path. Two
-`buildConfigField` values in `app/build.gradle.kts` control where the data comes from:
+There is no bundled JSON and no mock interceptor any more. Garages live in Postgres and
+come from **OpenStreetMap** via the Overpass API, which is ODbL licensed — free to store
+permanently, attribution required (shown in-app).
 
-```kotlin
-buildConfigField("String", "BASE_URL", "\"https://raw.githubusercontent.com/<you>/MechanicServiceApp/main/api/\"")
-buildConfigField("boolean", "USE_MOCK_API", "true")
-```
+`supabase/seed/0002_mechanics_osm.sql` is generated, not hand-written: 206 real businesses
+across Delhi, Mumbai, Hyderabad, Pune, Jaipur, Nashik and Kolhapur. The coverage is
+genuinely patchy, and the schema is built around admitting that:
 
-- `USE_MOCK_API = true` (default) — an OkHttp interceptor serves `assets/mechanics.json`
-  with a simulated 700 ms latency, so the app is demoable with no hosting and no network.
-- `USE_MOCK_API = false` — real HTTPS requests against `BASE_URL`. `api/mechanics.json`
-  in this repo is the payload; push the repo public, set your username in `BASE_URL`,
-  and the same code path hits the network for real.
+| Field | Known for |
+|---|---|
+| name + coordinates | 100% |
+| phone | 19% |
+| parseable opening hours | 10% |
+| services declared by the garage | 8 of 206 |
+| rating | 0% — OSM has no reviews, so every rating in this app is one a user left here |
 
-Only the interceptor changes. Retrofit, the parsing, the error handling and every screen
-above it behave identically either way.
+Three deliberate consequences:
 
-### Endpoints
+- **`is_open` is not a stored column.** It is computed from `mechanic_hours` in the
+  garage's own timezone, and is `NULL` when the hours are unknown. The UI renders that as
+  *"Hours not listed"* — a stored boolean is wrong the moment the clock moves.
+- **`rating` and `review_count` are not stored either.** They aggregate over `reviews`,
+  and a review can only be inserted against a *completed* booking the reviewer owns, which
+  makes a fake rating structurally impossible rather than merely discouraged.
+- **Nullable means nullable.** No phone renders no call button. The old DTO mapper
+  defaulted `rating` to `0.0` and `isOpen` to `false`, which made the app look more certain
+  than its data.
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `mechanics.json` | List of mechanics |
-| POST | `service-requests` | Submit a booking, returns request ID + ETA |
+### Searching anywhere
+
+`nearby_mechanics(lat, lng, radius_km, category, service, query)` does the distance maths
+and filtering in Postgres: a bounding-box prefilter on btree indexes, then haversine on the
+survivors. No PostGIS or earthdistance extension needed.
+
+Regions nobody has searched yet are filled in on demand by the `nearby-import` Edge
+Function, which keeps a ledger of fetched regions in `search_tiles` (geohash precision 5,
+~5 km cells) so the second search in an area costs nothing. That work is server-side for
+four reasons: Overpass rejects requests with no `User-Agent` and sheds load with 502s, so
+it needs one polite caller with backoff rather than N phones; writing `mechanics` rows is
+forbidden to end users by RLS and needs the service-role key, which must never ship in an
+APK; one fetch per region is shared by everyone; and a paid provider's key would live in
+the same place.
+
+Swapping to a paid provider means replacing `fetchOverpass` and setting `SOURCE` — nothing
+else moves. Note the constraint that shaped the schema: Google's Maps Platform terms allow
+caching Places lat/lng for at most 30 consecutive days, which is why `mechanics` carries
+`coords_fetched_at` and `purge_expired_coordinates()` exists. OSM rows leave it null and
+are never purged.
 
 ## Error handling
 
@@ -86,9 +132,11 @@ above it behave identically either way.
 unconfirmed email, duplicate account, weak password, rate limits) onto readable text and
 falls through to the mapper below for anything else.
 
-`Throwable.toUserMessage()` maps `UnknownHostException`, `SocketTimeoutException`,
-`HttpException` (by status code) and generic `IOException` onto messages a person can
-act on, instead of surfacing raw exception text. Failures render as a retryable state
+`Throwable.toUserMessage()` maps Supabase's `RestException` subclasses, `UnknownHostException`,
+`SocketTimeoutException` and generic `IOException` onto messages a person can act on. It also
+translates the server-side rules this app leans on — a row level security rejection reads as
+a constraint violation, and the request-transition trigger raises its own messages — into
+something meaningful to whoever is holding the phone. Failures render as a retryable state
 view on the list and detail screens, and as a Snackbar with a retry action on the form.
 
 ## Authentication
@@ -135,12 +183,43 @@ app they asked to leave.
 
 Requires JDK 17+ and Android SDK 37. `minSdk` is 24.
 
+### Backend setup
+
+The app needs its schema before it can show anything. Two steps, both one-off:
+
+1. **Apply the schema and seed.** Open the Supabase dashboard → SQL Editor → New query,
+   paste the whole of `supabase/apply_all.sql`, and run it. It is idempotent, so running it
+   again is safe and refreshes the seeded garages without touching any listing a garage
+   owner has claimed.
+
+2. **Deploy the region importer** (optional). Without it the seven seeded cities work
+   normally and searching elsewhere simply finds nothing — the app degrades to a snackbar
+   rather than an error.
+
+   ```bash
+   supabase functions deploy nearby-import
+   ```
+
+   It reads `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`, all three
+   of which Supabase injects into deployed functions automatically.
+
+3. **Schedule the coordinate purge** (only if you switch to a provider with a retention
+   limit, such as Google Places). Enable `pg_cron` under Database → Extensions, then run
+   the `cron.schedule` call at the bottom of `supabase/migrations/0002_views_rpc.sql`.
+
 ## Not implemented
 
-Search/filter, pagination, offline caching, Firebase and unit tests were scoped out of
-this submission. Hilt and Supabase authentication were the bonus items included.
+**The garage side has a backend but no UI.** The schema, the RLS policies and the
+status-transition trigger all support a garage owner claiming a listing, accepting a
+request with an ETA, and marking it complete — and that path is covered by the SQL tests —
+but there is no screen for it. In practice that means a booking stays `pending` until
+somebody moves it on from the Supabase dashboard. Building those screens is the next
+meaningful piece of work, and it is what would make request status change on its own.
+
+Also out of scope: realtime status updates (the `realtime-kt` module would replace the
+pull-to-refresh on My requests), pagination, offline caching, and unit tests — the backend
+is covered by SQL-level tests, the Kotlin side is not.
 
 Password reset is not wired up: sending the email is a one-liner, but completing the reset
-needs a deep link back into the app, which is a flow of its own. Social/OAuth sign-in and a
-dedicated `profiles` table (user details currently live in Supabase user metadata) are the
-other natural next steps.
+needs a deep link back into the app, which is a flow of its own. Social/OAuth sign-in is
+the other natural next step.

@@ -6,9 +6,26 @@
     <string name="home_subtitle">Mechanics near you</string>
     <string name="mechanics_count">%1$d garages nearby</string>
 
+    <!-- Location -->
+    <string name="location_title">Search location</string>
+    <string name="location_change">Change</string>
+    <string name="location_none">Choose a location</string>
+    <string name="location_use_device">Use my current location</string>
+    <string name="location_search_hint">Search a city, area or pincode</string>
+    <string name="location_search_action">Search</string>
+    <string name="location_permission_rationale">Allow location access to find garages near you, or search for an area instead.</string>
+    <string name="location_results_label">Results</string>
+    <string name="location_coords_format">%1$.4f, %2$.4f</string>
+    <string name="location_recent_label">Last used</string>
+    <string name="radius_label">Within %1$s</string>
+    <string name="coverage_checking">Checking this area…</string>
+    <string name="coverage_imported">Added %1$d garages for this area.</string>
+    <string name="coverage_failed">Couldn\'t expand coverage for this area right now.</string>
+
     <!-- Mechanic card / detail -->
     <string name="status_open">Open now</string>
     <string name="status_closed">Closed</string>
+    <string name="status_hours_unknown">Hours not listed</string>
     <string name="distance_format">%1$.1f km away</string>
     <string name="rating_format">%1$.1f</string>
     <string name="review_count_format">(%1$d reviews)</string>
@@ -17,6 +34,14 @@
     <string name="address_label">Address</string>
     <string name="phone_label">Phone</string>
     <string name="more_services_format">+%1$d more</string>
+    <string name="rating_none">No ratings yet</string>
+    <string name="review_count_one">(1 review)</string>
+    <string name="phone_not_listed">Phone number not listed</string>
+    <string name="hours_not_listed">Opening hours not listed</string>
+    <string name="address_not_listed">Address not listed</string>
+    <string name="services_inferred_note">Typical services for this kind of garage. Not confirmed by the garage.</string>
+    <string name="services_declared_note">Services listed by the garage.</string>
+    <string name="data_attribution">Garage data © OpenStreetMap contributors</string>
     <string name="request_service">Request Service</string>
     <string name="call_garage">Call</string>
     <string name="detail_title">Garage details</string>
@@ -33,10 +58,35 @@
     <string name="submitting">Submitting…</string>
 
     <!-- Confirmation -->
-    <string name="confirmation_title">Request confirmed</string>
-    <string name="confirmation_request_id">Request ID: %1$s</string>
-    <string name="confirmation_eta">A mechanic will reach you in about %1$d minutes.</string>
+    <string name="confirmation_title">Request sent</string>
+    <string name="confirmation_request_id">Reference: %1$s</string>
+    <!-- No invented ETA: the garage has not seen this request yet. -->
+    <string name="confirmation_pending">%1$s will confirm shortly. You can follow it under My requests.</string>
     <string name="done">Done</string>
+
+    <!-- My requests -->
+    <string name="my_requests_title">My requests</string>
+    <string name="my_requests_action">My requests</string>
+    <string name="requests_empty_title">No requests yet</string>
+    <string name="requests_empty_message">Book a service and it will show up here with its status.</string>
+    <string name="request_vehicle_format">Vehicle %1$s</string>
+    <string name="request_eta_format">ETA about %1$d minutes</string>
+    <string name="request_eta_pending">Waiting for the garage to confirm</string>
+    <string name="request_cancel">Cancel request</string>
+    <string name="request_cancel_title">Cancel this request?</string>
+    <string name="request_cancel_message">The garage will no longer see it. This can\'t be undone.</string>
+    <string name="request_cancel_confirm">Cancel request</string>
+    <string name="request_keep">Keep it</string>
+    <string name="request_cancelled">Request cancelled.</string>
+
+    <!-- Reviews -->
+    <string name="review_action">Rate this garage</string>
+    <string name="review_title">Rate %1$s</string>
+    <string name="review_comment_hint">Anything worth mentioning? (optional)</string>
+    <string name="review_submit">Submit rating</string>
+    <string name="review_submitted">Thanks — your rating is live.</string>
+    <string name="review_pick_rating">Tap a star to rate.</string>
+    <string name="review_yours_format">You rated this %1$d/5</string>
 
     <!-- Auth -->
     <string name="sign_in_title">Welcome back</string>
@@ -75,8 +125,12 @@
     <!-- States -->
     <string name="error_title">Something went wrong</string>
     <string name="retry">Retry</string>
-    <string name="empty_title">No mechanics found</string>
-    <string name="empty_message">We couldn\'t find any garages near you right now.</string>
+    <string name="empty_title">No garages found</string>
+    <string name="empty_message">No garages are listed near %1$s yet. Try a wider radius.</string>
+    <string name="empty_filtered_message">No garages near %1$s match these filters.</string>
+    <string name="filter_all">All</string>
+    <string name="filter_clear">Clear filters</string>
+    <string name="search_hint">Search by name or area</string>
     <string name="no_dialer">No phone app available on this device.</string>
 
     <!-- Content descriptions -->

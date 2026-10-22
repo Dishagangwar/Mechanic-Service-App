@@ -9,6 +9,9 @@
     <color name="status_open_bg">#DCFCE7</color>
     <color name="status_closed">#B91C1C</color>
     <color name="status_closed_bg">#FEE2E2</color>
+    <!-- "Hours not listed": neutral on purpose, so it reads as neither open nor closed. -->
+    <color name="status_unknown">#64748B</color>
+    <color name="status_unknown_bg">#E9EDF2</color>
 
     <color name="surface_light">#FFFFFF</color>
     <color name="surface_dark">#12161C</color>

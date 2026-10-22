@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -54,6 +55,7 @@ class RequestServiceFragment : Fragment() {
         binding.serviceInput.setSimpleItems(services.toTypedArray())
 
         wireErrorClearing()
+        observePrefill()
 
         binding.submitButton.setOnClickListener {
             viewModel.submit(
@@ -102,6 +104,26 @@ class RequestServiceFragment : Fragment() {
         }
     }
 
+    /**
+     * Fills the name and phone from the signed-in user's profile, but only while the
+     * fields are still untouched, so it can never overwrite something being typed.
+     */
+    private fun observePrefill() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.prefill.collect { prefill ->
+                    prefill ?: return@collect
+                    if (binding.nameInput.text.isNullOrBlank() && prefill.name.isNotBlank()) {
+                        binding.nameInput.setText(prefill.name)
+                    }
+                    if (binding.phoneInput.text.isNullOrBlank() && prefill.phone.isNotBlank()) {
+                        binding.phoneInput.setText(prefill.phone)
+                    }
+                }
+            }
+        }
+    }
+
     private fun observeSubmission() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -140,13 +162,18 @@ class RequestServiceFragment : Fragment() {
         )
     }
 
+    /**
+     * The booking is saved, so this reports what is actually true: it has been sent and
+     * the garage has not seen it yet. The old version showed an ETA of 20-60 minutes
+     * invented client-side by `Random.nextInt`, before any garage was involved.
+     */
     private fun showConfirmation(result: ServiceRequestResult) {
         val dialogBinding = DialogConfirmationBinding.inflate(layoutInflater)
-        dialogBinding.confirmationMessage.text = result.message
-        dialogBinding.confirmationEta.text =
-            getString(R.string.confirmation_eta, result.etaMinutes)
+        dialogBinding.confirmationMessage.text =
+            getString(R.string.confirmation_pending, result.mechanicName)
+        dialogBinding.confirmationEta.isVisible = false
         dialogBinding.confirmationRequestId.text =
-            getString(R.string.confirmation_request_id, result.requestId)
+            getString(R.string.confirmation_request_id, result.requestId.take(8))
 
         MaterialAlertDialogBuilder(requireContext())
             .setView(dialogBinding.root)

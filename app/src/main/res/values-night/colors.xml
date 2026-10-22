@@ -8,4 +8,6 @@
     <color name="auth_logo_badge">#1FFFFFFF</color>
     <!-- A touch lighter than surface_dark so the card still lifts off the background. -->
     <color name="auth_card_bg">#171C24</color>
+    <color name="status_unknown">#94A3B8</color>
+    <color name="status_unknown_bg">#1E2530</color>
 </resources>

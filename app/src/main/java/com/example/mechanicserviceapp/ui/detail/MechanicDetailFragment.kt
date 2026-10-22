@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -82,26 +83,45 @@ class MechanicDetailFragment : Fragment() {
         }
     }
 
+    /**
+     * Most of this is about saying "we don't know" properly.
+     *
+     * These are real listings and the majority are missing a phone number, hours or
+     * both. Where a field is absent the row says so in plain words and the control it
+     * would have driven is disabled — a call button that dials nothing is worse than
+     * no call button.
+     */
     private fun bind(mechanic: Mechanic) = with(binding) {
         val context = requireContext()
 
-        toolbar.title = mechanic.name
-        nameText.text = mechanic.name
-        ratingText.text = getString(R.string.rating_format, mechanic.rating)
-        reviewCountText.text = getString(R.string.review_count_format, mechanic.reviewCount)
-        addressText.text = mechanic.address
-        hoursText.text = mechanic.workingHours
-        phoneText.text = mechanic.phone
+        toolbar.title = mechanic.displayName
+        nameText.text = mechanic.displayName
+        secondaryNameText.isVisible = mechanic.secondaryName != null
+        secondaryNameText.text = mechanic.secondaryName
 
-        if (mechanic.isOpen) {
-            statusText.setText(R.string.status_open)
-            statusText.setBackgroundResource(R.drawable.bg_status_open)
-            statusText.setTextColor(context.getColor(R.color.status_open))
-        } else {
-            statusText.setText(R.string.status_closed)
-            statusText.setBackgroundResource(R.drawable.bg_status_closed)
-            statusText.setTextColor(context.getColor(R.color.status_closed))
+        val rating = mechanic.rating
+        ratingPill.isVisible = rating != null
+        noRatingText.isVisible = rating == null
+        reviewCountText.isVisible = rating != null
+        if (rating != null) {
+            ratingText.text = getString(R.string.rating_format, rating)
+            reviewCountText.text = if (mechanic.reviewCount == 1) {
+                getString(R.string.review_count_one)
+            } else {
+                getString(R.string.review_count_format, mechanic.reviewCount)
+            }
         }
+
+        addressText.text = mechanic.fullAddress ?: getString(R.string.address_not_listed)
+
+        // Prefer parsed hours when we have them, fall back to the provider's raw
+        // string, and otherwise admit we don't know.
+        hoursText.text = mechanic.openingHoursRaw ?: getString(R.string.hours_not_listed)
+
+        phoneText.text = mechanic.phone ?: getString(R.string.phone_not_listed)
+        callButton.isVisible = mechanic.hasPhone
+
+        bindStatus(mechanic)
 
         servicesChipGroup.removeAllViews()
         val inflater = LayoutInflater.from(context)
@@ -113,18 +133,53 @@ class MechanicDetailFragment : Fragment() {
             chip.isClickable = false
             servicesChipGroup.addView(chip)
         }
+        servicesNoteText.isVisible = mechanic.services.isNotEmpty()
+        servicesNoteText.setText(
+            if (mechanic.hasDeclaredServices) {
+                R.string.services_declared_note
+            } else {
+                R.string.services_inferred_note
+            }
+        )
 
-        callButton.setOnClickListener { dial(mechanic.phone) }
+        callButton.setOnClickListener { mechanic.phone?.let(::dial) }
 
         requestServiceButton.setOnClickListener {
             findNavController().navigate(
                 R.id.action_detail_to_request,
                 bundleOf(
                     RequestServiceViewModel.ARG_MECHANIC_ID to mechanic.id,
-                    RequestServiceViewModel.ARG_MECHANIC_NAME to mechanic.name,
+                    RequestServiceViewModel.ARG_MECHANIC_NAME to mechanic.displayName,
                     RequestServiceViewModel.ARG_SERVICES to mechanic.services.toTypedArray()
                 )
             )
+        }
+    }
+
+    /**
+     * Three states. A null [Mechanic.isOpen] means nobody recorded this garage's
+     * hours, which is not the same as being closed.
+     */
+    private fun bindStatus(mechanic: Mechanic) = with(binding) {
+        val context = requireContext()
+        when (mechanic.isOpen) {
+            true -> {
+                statusText.setText(R.string.status_open)
+                statusText.setBackgroundResource(R.drawable.bg_status_open)
+                statusText.setTextColor(context.getColor(R.color.status_open))
+            }
+
+            false -> {
+                statusText.setText(R.string.status_closed)
+                statusText.setBackgroundResource(R.drawable.bg_status_closed)
+                statusText.setTextColor(context.getColor(R.color.status_closed))
+            }
+
+            null -> {
+                statusText.setText(R.string.status_hours_unknown)
+                statusText.setBackgroundResource(R.drawable.bg_status_unknown)
+                statusText.setTextColor(context.getColor(R.color.status_unknown))
+            }
         }
     }
 

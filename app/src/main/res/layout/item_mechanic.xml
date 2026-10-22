@@ -28,17 +28,35 @@
             android:orientation="horizontal"
             android:baselineAligned="false">
 
-            <TextView
-                android:id="@+id/nameText"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:maxLines="2"
-                android:ellipsize="end"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                android:textColor="?attr/colorOnSurface"
-                android:textStyle="bold"
-                tools:text="Sharma Auto Works" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/nameText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textStyle="bold"
+                    tools:text="श्री समर्थ ॲाटो" />
+
+                <TextView
+                    android:id="@+id/secondaryNameText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone"
+                    tools:text="Shree Samarth Auto"
+                    tools:visibility="visible" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/statusText"
@@ -62,6 +80,7 @@
             android:orientation="horizontal">
 
             <LinearLayout
+                android:id="@+id/ratingPill"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_rating_pill"
@@ -88,6 +107,16 @@
             </LinearLayout>
 
             <TextView
+                android:id="@+id/noRatingText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/rating_none"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <TextView
                 android:id="@+id/reviewCountText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -97,10 +126,11 @@
                 tools:text="(218 reviews)" />
 
             <TextView
+                android:id="@+id/dotSeparator"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="6dp"
-                android:text="•"
+                android:text="\u2022"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView

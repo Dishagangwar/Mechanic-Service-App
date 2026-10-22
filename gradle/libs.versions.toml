@@ -16,10 +16,8 @@ navigation = "2.10.0"
 recyclerview = "1.4.0"
 swiperefresh = "1.2.0"
 coroutines = "1.11.0"
-retrofit = "3.0.0"
-okhttp = "5.5.0"
-moshi = "1.15.2"
 hiltNavigation = "1.4.0"
+playServicesLocation = "21.3.0"
 supabase = "3.1.4"
 ktor = "3.1.2"
 
@@ -41,19 +39,21 @@ androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview"
 androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefresh" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
-retrofit-converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
-okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
-moshi = { group = "com.squareup.moshi", name = "moshi", version.ref = "moshi" }
-moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-fragment = { group = "androidx.hilt", name = "hilt-navigation-fragment", version.ref = "hiltNavigation" }
 # The BOM keeps every supabase-kt module on one version; the modules below carry no version of their own.
 supabase-bom = { group = "io.github.jan-tennert.supabase", name = "bom", version.ref = "supabase" }
 supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt" }
+# PostgREST: the auto-generated REST API over the Postgres schema. This replaces the
+# Retrofit service — the tables and the nearby_mechanics RPC are the API.
+supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgrest-kt" }
+# Invokes the nearby-import Edge Function, which holds the provider credentials.
+supabase-functions = { group = "io.github.jan-tennert.supabase", name = "functions-kt" }
 # supabase-kt talks over Ktor rather than Retrofit, so it needs an engine; OkHttp is already here.
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+# Fused location, for the "use my location" option in the location picker.
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

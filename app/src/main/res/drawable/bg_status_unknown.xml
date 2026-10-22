@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The badge for a garage whose opening hours nobody has recorded. Deliberately
+     neutral grey: it must not read as either open (green) or closed (red). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/status_unknown_bg"/>
+    <corners android:radius="20dp"/>
+</shape>
