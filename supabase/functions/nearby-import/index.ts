@@ -17,7 +17,7 @@
 // for what each one can and cannot do.
 // ---------------------------------------------------------------------------
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.10";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.47.10";
 import {
   CATEGORY_DEFAULTS,
   activeProvider,
@@ -31,6 +31,27 @@ function tileTtlDays(provider: string): number {
   // must not outlive them. OSM has no such limit, so the TTL there is only
   // about picking up newly mapped garages.
   return provider === "google" ? 25 : 90;
+}
+
+/**
+ * How big a region one import actually covers — which is not the same for every
+ * provider, and getting it wrong silently leaves most of a "covered" tile empty.
+ *
+ * Overpass returns everything in the radius, so one fetch genuinely covers a
+ * wide area and a ~5 km cell (precision 5) is honest.
+ *
+ * Ola and Google both cap a response: Ola hard-stops at 50 results regardless of
+ * the `limit` asked for, and Google's Nearby Search at 20 per type. Measured in
+ * Koramangala, Ola's 50 nearest all fell within 400 m. Marking a 5 km cell
+ * covered off the back of that would strand everyone more than a few hundred
+ * metres from the centre. So capped providers use precision 6 (~1.2 km), where
+ * the ledger entry means roughly what it says.
+ *
+ * The ledger is keyed on (geohash, source), so cells of different sizes from
+ * different providers coexist without colliding.
+ */
+function tilePrecision(provider: string): number {
+  return provider === "osm" ? 5 : 6;
 }
 
 const B32 = "0123456789bcdefghjkmnpqrstuvwxyz";
@@ -55,6 +76,61 @@ function geohash(lat: number, lng: number, precision = 5): string {
     if (++bit === 5) { hash += B32[bits]; bits = 0; bit = 0; }
   }
   return hash;
+}
+
+/** Metres per degree of latitude; good enough for a dedup window. */
+const M_PER_DEG = 111_045;
+
+function normaliseName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/**
+ * Removes places that duplicate a row we already have from another source,
+ * matched on being within [DEDUP_RADIUS_M] and sharing a normalised name.
+ *
+ * Name equality alone is far too loose — "Sai Auto" is every third garage in
+ * India — and proximity alone would merge genuinely different shops in the same
+ * market. Both together is conservative enough to be safe: a missed duplicate
+ * is a cosmetic flaw, a wrongly merged pair loses a real business.
+ */
+async function withoutKnownDuplicates(
+  db: SupabaseClient,
+  provider: string,
+  places: Awaited<ReturnType<typeof fetchPlaces>>,
+  lat: number,
+  lng: number,
+  radiusM: number,
+) {
+  if (!places.length) return places;
+
+  const dLat = (radiusM + 500) / M_PER_DEG;
+  const dLng = dLat / Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
+
+  const { data: existing } = await db
+    .from("mechanics")
+    .select("name, lat, lng, source")
+    .neq("source", provider)
+    .gte("lat", lat - dLat).lte("lat", lat + dLat)
+    .gte("lng", lng - dLng).lte("lng", lng + dLng)
+    .limit(1000);
+
+  if (!existing?.length) return places;
+
+  const known = existing
+    .filter((r) => r.lat != null && r.lng != null)
+    .map((r) => ({ name: normaliseName(String(r.name)), lat: r.lat as number, lng: r.lng as number }));
+
+  const DEDUP_RADIUS_M = 120;
+  return places.filter((p) => {
+    const pName = normaliseName(p.name);
+    return !known.some((k) => {
+      if (k.name !== pName) return false;
+      const dy = (p.lat - k.lat) * M_PER_DEG;
+      const dx = (p.lng - k.lng) * M_PER_DEG * Math.cos((lat * Math.PI) / 180);
+      return Math.hypot(dx, dy) <= DEDUP_RADIUS_M;
+    });
+  });
 }
 
 Deno.serve(async (req) => {
@@ -97,7 +173,7 @@ Deno.serve(async (req) => {
 
     const provider = activeProvider();
     const db = createClient(url, serviceKey);
-    const tile = geohash(lat, lng);
+    const tile = geohash(lat, lng, tilePrecision(provider));
 
     const { data: existing } = await db
       .from("search_tiles")
@@ -115,8 +191,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    const places = await fetchPlaces(provider, lat, lng, radiusM);
+    const fetched = await fetchPlaces(provider, lat, lng, radiusM);
     const fetchedAt = coordsExpire(provider) ? new Date().toISOString() : null;
+
+    // Drop anything we already hold from a different source. Without this the
+    // seeded OpenStreetMap rows and a commercial provider's rows for the same
+    // garage both show up, and the user sees it listed twice.
+    const places = await withoutKnownDuplicates(db, provider, fetched, lat, lng, radiusM);
 
     const { data: services } = await db.from("services").select("id, slug");
     const slugToId = new Map((services ?? []).map((s) => [s.slug, s.id as string]));

@@ -125,7 +125,7 @@ stays affordable.
 |---|---|---|---|
 | `osm` (default) | Good in metros, thin to absent elsewhere | Yes, ODbL, forever | No |
 | `google` | Effectively every Indian business, ~90% with a phone | **Coordinates: 30 days max** | Yes, billed |
-| `ola` | Unproven — see below | Yes, with attribution | Yes, free tier |
+| `ola` | **Measured: 50 everywhere, incl. where OSM has 0** | Yes, with attribution | Yes, 100K/month free |
 
 OpenStreetMap is the default because it needs no key and no billing, but measured over a
 10 km radius it does not support a promise of national coverage:
@@ -158,13 +158,43 @@ trade. The response does carry OSM-style type strings, so the adapter recovers a
 category from those where it can.
 
 Licensing is more permissive than Google's: the platform terms carry no retention cap, so
-results may be stored. But they require attribution reading "Ola Maps", linked to
-openstreetmap.org/copyright, and state the data is available under the **Open Database
-License** — which says plainly that it is at least partly OpenStreetMap-derived. Since OSM
-is the dataset measured above as near-empty outside metros, **treat Ola's coverage as
-unproven until it has been measured with a real key.** It may well be much better, because
-Ola has its own India-wide ride-hailing POI data to enrich with; that is a reason to test
-it, not a reason to assume.
+results may be stored. They require attribution reading "Ola Maps", linked to
+openstreetmap.org/copyright, under the **Open Database License**.
+
+Measured against a real key, 10 km radius, same points as the OSM sweep:
+
+| Location | OSM | Ola |
+|---|---|---|
+| Koramangala | 186 | 50 (capped) |
+| Andheri | 36 | 50 |
+| Salt Lake | 8 | 50 |
+| Ahmedabad | 2 | **50** |
+| Nashik | 2 | **50** |
+| Kolhapur | 1 | **50** |
+| Solapur | 0 | **50** |
+| Bilaspur | 0 | **50** |
+| Karad | 0 | **50** |
+
+Coverage is the thing it fixes, and it fixes it completely: places that returned nothing now
+return a full page of real businesses. All results sit inside the requested radius, carry
+genuine distinct coordinates, and the type filter is exact — 500 of 500 sampled results were
+tagged `car_repair`, `car_dealer` or `car_wash`.
+
+Two real caveats:
+
+- **Field completeness is worse than OSM.** Across 500 results, 5% had a phone and 0.6% had
+  opening hours, against 19% and 10% for OSM. The UI already handles absence honestly, but a
+  garage with no number is less useful.
+- **A hard cap of 50 results**, regardless of the `limit` asked for. In dense Koramangala
+  those 50 all fell within 400 m, which is why `tilePrecision()` drops capped providers to
+  geohash 6 (~1.2 km cells) instead of 5 (~5 km). Marking a 5 km cell covered from a 400 m
+  fetch would strand everyone outside the centre.
+
+Because the two sources can coexist, the importer drops any place within 120 m of an
+existing row from a different source that shares a normalised name — otherwise the seeded
+OSM garages and their Ola equivalents both appear. Name equality alone is far too loose in
+India ("Sai Auto" is every third garage) and proximity alone would merge distinct shops in
+one market, so it requires both.
 
 Attribution is handled in `util/Attribution.kt` and follows the rows actually on screen,
 since after a provider switch the table legitimately holds a mix.
