@@ -95,7 +95,7 @@ class HomeFragment : Fragment() {
                 return@setFragmentResultListener
             }
 
-            viewModel.setLocation(
+            viewModel.onLocationChosen(
                 SearchLocation(latitude, longitude, label, SearchLocation.Origin.SEARCHED)
             )
         }

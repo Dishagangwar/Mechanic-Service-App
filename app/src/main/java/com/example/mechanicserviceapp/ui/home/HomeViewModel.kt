@@ -71,6 +71,18 @@ class HomeViewModel @Inject constructor(
     private var loadJob: Job? = null
     private var coverageJob: Job? = null
 
+    /**
+     * Set once the user picks a location themselves.
+     *
+     * Startup resolution is asynchronous and can take many seconds — reading the
+     * saved location is a round trip, and a GPS fix waits up to 15. A user who
+     * opens the picker inside that window and chooses somewhere would otherwise
+     * have their choice overwritten the moment the slower startup path finished,
+     * silently snapping them back to wherever the device is.
+     */
+    @Volatile
+    private var userPickedLocation = false
+
     init {
         resolveStartingLocation()
     }
@@ -82,16 +94,29 @@ class HomeViewModel @Inject constructor(
      */
     private fun resolveStartingLocation() {
         viewModelScope.launch {
-            locationRepository.lastUsedLocation()?.let { setLocation(it, remember = false); return@launch }
+            val saved = locationRepository.lastUsedLocation()
+            if (userPickedLocation) return@launch
+            if (saved != null) { setLocation(saved, remember = false); return@launch }
 
             if (locationRepository.hasLocationPermission()) {
                 val result = locationRepository.currentLocation()
+                // Re-check: the fix can take up to 15 seconds, and the user may
+                // have chosen somewhere while we waited. Their choice wins.
+                if (userPickedLocation) return@launch
                 if (result is Resource.Success) { setLocation(result.data); return@launch }
             }
+
+            if (userPickedLocation) return@launch
 
             // Nothing to go on. Not an error — the picker is the next step.
             _state.update { it.copy(location = null, mechanics = Resource.Success(emptyList())) }
         }
+    }
+
+    /** Called when the choice came from the user rather than from startup. */
+    fun onLocationChosen(location: SearchLocation) {
+        userPickedLocation = true
+        setLocation(location)
     }
 
     fun setLocation(location: SearchLocation, remember: Boolean = true) {
