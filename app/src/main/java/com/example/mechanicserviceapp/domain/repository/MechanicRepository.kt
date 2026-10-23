@@ -24,7 +24,15 @@ interface MechanicRepository {
         query: String? = null
     ): Flow<Resource<List<Mechanic>>>
 
-    fun getMechanicById(id: String): Flow<Resource<Mechanic>>
+    /**
+     * One garage.
+     *
+     * Served from the last list result when possible, so returning from a tap
+     * costs nothing. Pass [forceRefresh] after anything that changes the row
+     * itself — claiming it, for instance — because that cached copy is from
+     * before the change and would quietly undo it on screen.
+     */
+    fun getMechanicById(id: String, forceRefresh: Boolean = false): Flow<Resource<Mechanic>>
 
     /**
      * Asks the backend to import this region from the map provider if it has never

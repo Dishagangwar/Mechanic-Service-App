@@ -104,20 +104,23 @@ class MechanicRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getMechanicById(id: String): Flow<Resource<Mechanic>> = flow {
+    override fun getMechanicById(id: String, forceRefresh: Boolean): Flow<Resource<Mechanic>> = flow {
         emit(Resource.Loading)
 
         if (!SupabaseConfig.isConfigured) {
             emit(Resource.Error(SupabaseConfig.SETUP_MESSAGE)); return@flow
         }
 
-        cached.firstOrNull { it.id == id }?.let {
-            emit(Resource.Success(it)); return@flow
+        if (!forceRefresh) {
+            cached.firstOrNull { it.id == id }?.let {
+                emit(Resource.Success(it)); return@flow
+            }
         }
 
-        // Cold start straight into the detail screen (process death, deep link) leaves
-        // the cache empty. Read the row directly; distance is simply unknown here,
-        // since without a search location there is nothing to measure from.
+        // Also the cold-start path: arriving straight at the detail screen after
+        // process death or a deep link leaves the cache empty. Distance is simply
+        // unknown here, since without a search location there is nothing to
+        // measure from.
         try {
             val rows = postgrest.from("mechanics_with_stats")
                 .select { filter { eq("id", id) } }
@@ -126,9 +129,16 @@ class MechanicRepositoryImpl @Inject constructor(
             val mechanic = json.parseToJsonElement(rows).asRows()
                 .firstNotNullOfOrNull { it.toMechanic() }
 
-            if (mechanic != null) emit(Resource.Success(mechanic))
-            else emit(Resource.Error("This garage is no longer listed."))
+            if (mechanic != null) {
+                // Keep the list's copy in step, or going back would show the
+                // pre-change row again.
+                cached = cached.map { if (it.id == id) mechanic.copy(distanceKm = it.distanceKm) else it }
+                emit(Resource.Success(mechanic))
+            } else {
+                emit(Resource.Error("This garage is no longer listed."))
+            }
         } catch (e: Exception) {
+            Diag.warn("getMechanicById FAILED", e)
             emit(Resource.Error(e.toUserMessage(), e))
         }
     }

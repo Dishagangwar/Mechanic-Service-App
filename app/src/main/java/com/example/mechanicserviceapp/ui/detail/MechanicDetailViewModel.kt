@@ -53,8 +53,9 @@ class MechanicDetailViewModel @Inject constructor(
                 is Resource.Error -> ClaimState.Failed(result.message)
                 Resource.Loading -> ClaimState.Working
             }
-            // Ownership changed, so the row we are rendering is stale.
-            if (_claim.value is ClaimState.Done) load()
+            // Ownership changed, so both the row on screen and the list's cached
+            // copy are stale. Re-read rather than patching locally.
+            if (_claim.value is ClaimState.Done) load(forceRefresh = true)
         }
     }
 
@@ -72,9 +73,9 @@ class MechanicDetailViewModel @Inject constructor(
         load()
     }
 
-    fun load() {
+    fun load(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            repository.getMechanicById(mechanicId).collect { _state.value = it }
+            repository.getMechanicById(mechanicId, forceRefresh).collect { _state.value = it }
         }
     }
 
