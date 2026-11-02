@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer. Only alpha survives tinting, so the bolt can't be separated from
+     the wrench by a gap here; the wrench alone reads more cleanly than the merged shape. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="45">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M43.037,49.5 H64.963 A11,11 0 0 1 85.341,50.25 H74 A3.75,3.75 0 0 0 74,57.75 H85.341 A11,11 0 0 1 64.963,58.5 H43.037 A11,11 0 0 1 22.659,57.75 H34 A3.75,3.75 0 0 0 34,50.25 H22.659 A11,11 0 0 1 43.037,49.5 Z" />
+    </group>
+</vector>
