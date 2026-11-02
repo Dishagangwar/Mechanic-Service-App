@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Built release output and signing keys stay out of the repo.
+/app/release
+*.jks
+*.keystore

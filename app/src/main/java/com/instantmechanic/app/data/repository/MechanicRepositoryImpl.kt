@@ -1,0 +1,207 @@
+package com.instantmechanic.app.data.repository
+
+import com.instantmechanic.app.data.mapper.toMechanic
+import com.instantmechanic.app.domain.model.CoverageResult
+import com.instantmechanic.app.domain.model.Mechanic
+import com.instantmechanic.app.domain.model.MechanicCategory
+import com.instantmechanic.app.domain.model.SearchLocation
+import com.instantmechanic.app.domain.model.ServiceOption
+import com.instantmechanic.app.domain.repository.MechanicRepository
+import com.instantmechanic.app.util.Diag
+import com.instantmechanic.app.util.Resource
+import com.instantmechanic.app.util.SupabaseConfig
+import com.instantmechanic.app.util.asRows
+import com.instantmechanic.app.util.bool
+import com.instantmechanic.app.util.int
+import com.instantmechanic.app.util.str
+import com.instantmechanic.app.util.toUserMessage
+import dagger.Lazy
+import io.github.jan.supabase.functions.Functions
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.query.Order
+import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Reads garages out of Postgres through PostgREST.
+ *
+ * The list screen calls `nearby_mechanics`, a database function that does the
+ * distance maths and the filtering server-side, so the phone never downloads rows
+ * it is going to throw away. Coverage for an unvisited region is requested from an
+ * Edge Function rather than fetched here, because the provider credentials and the
+ * region cache both belong on the server.
+ */
+@Singleton
+class MechanicRepositoryImpl @Inject constructor(
+    private val postgrestProvider: Lazy<Postgrest>,
+    private val functionsProvider: Lazy<Functions>
+) : MechanicRepository {
+
+    private val postgrest: Postgrest get() = postgrestProvider.get()
+    private val functions: Functions get() = functionsProvider.get()
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /**
+     * The last page of results. The detail screen reads from here instead of making
+     * a second round trip, which also makes rotation free.
+     */
+    @Volatile
+    private var cached: List<Mechanic> = emptyList()
+
+    override fun getMechanics(
+        location: SearchLocation,
+        radiusKm: Int,
+        category: MechanicCategory?,
+        query: String?
+    ): Flow<Resource<List<Mechanic>>> = flow {
+        emit(Resource.Loading)
+
+        if (!SupabaseConfig.isConfigured) {
+            emit(Resource.Error(SupabaseConfig.SETUP_MESSAGE)); return@flow
+        }
+        if (!location.isValid) {
+            emit(Resource.Error("Choose a location to search around.")); return@flow
+        }
+
+        Diag.log(
+            "getMechanics lat=${location.latitude} lng=${location.longitude} " +
+                "radius=${radiusKm}km label='${location.label}' origin=${location.origin} " +
+                "category=${category?.wireValue} query='${query.orEmpty()}'"
+        )
+
+        try {
+            val rows = postgrest.rpc(
+                function = "nearby_mechanics",
+                parameters = buildJsonObject {
+                    put("p_lat", location.latitude)
+                    put("p_lng", location.longitude)
+                    put("p_radius_km", radiusKm.toDouble())
+                    category?.let { put("p_category", it.wireValue) }
+                    query?.takeIf { it.isNotBlank() }?.let { put("p_query", it.trim()) }
+                }
+            ).data
+
+            val parsed = json.parseToJsonElement(rows).asRows()
+            val mechanics = parsed.mapNotNull { it.toMechanic() }
+            Diag.log(
+                "getMechanics <- ${mechanics.size} mechanics (${parsed.size} raw rows), " +
+                    "sources=${mechanics.map { it.source }.distinct()}"
+            )
+            if (parsed.isEmpty()) Diag.log("getMechanics raw body: ${rows.take(300)}")
+            cached = mechanics
+            emit(Resource.Success(mechanics))
+        } catch (e: Exception) {
+            Diag.warn("getMechanics FAILED", e)
+            emit(Resource.Error(e.toUserMessage(), e))
+        }
+    }
+
+    override fun getMechanicById(id: String, forceRefresh: Boolean): Flow<Resource<Mechanic>> = flow {
+        emit(Resource.Loading)
+
+        if (!SupabaseConfig.isConfigured) {
+            emit(Resource.Error(SupabaseConfig.SETUP_MESSAGE)); return@flow
+        }
+
+        if (!forceRefresh) {
+            cached.firstOrNull { it.id == id }?.let {
+                emit(Resource.Success(it)); return@flow
+            }
+        }
+
+        // Also the cold-start path: arriving straight at the detail screen after
+        // process death or a deep link leaves the cache empty. Distance is simply
+        // unknown here, since without a search location there is nothing to
+        // measure from.
+        try {
+            val rows = postgrest.from("mechanics_with_stats")
+                .select { filter { eq("id", id) } }
+                .data
+
+            val mechanic = json.parseToJsonElement(rows).asRows()
+                .firstNotNullOfOrNull { it.toMechanic() }
+
+            if (mechanic != null) {
+                // Keep the list's copy in step, or going back would show the
+                // pre-change row again.
+                cached = cached.map { if (it.id == id) mechanic.copy(distanceKm = it.distanceKm) else it }
+                emit(Resource.Success(mechanic))
+            } else {
+                emit(Resource.Error("This garage is no longer listed."))
+            }
+        } catch (e: Exception) {
+            Diag.warn("getMechanicById FAILED", e)
+            emit(Resource.Error(e.toUserMessage(), e))
+        }
+    }
+
+    override suspend fun ensureCoverage(
+        location: SearchLocation,
+        radiusKm: Int
+    ): Resource<CoverageResult> {
+        if (!SupabaseConfig.isConfigured) return Resource.Error(SupabaseConfig.SETUP_MESSAGE)
+        if (!location.isValid) return Resource.Error("Choose a location to search around.")
+
+        Diag.log("ensureCoverage -> lat=${location.latitude} lng=${location.longitude} radius=${radiusKm}km")
+
+        return try {
+            val body = functions.invoke(
+                function = "nearby-import",
+                body = buildJsonObject {
+                    put("lat", location.latitude)
+                    put("lng", location.longitude)
+                    put("radius_m", radiusKm * 1000)
+                }
+            ).bodyAsText()
+
+            Diag.log("ensureCoverage <- ${body.take(300)}")
+
+            val payload = json.parseToJsonElement(body) as? JsonObject
+                ?: return Resource.Error("The coverage service returned something unexpected.")
+
+            payload.str("error")?.let {
+                Diag.warn("ensureCoverage server error: $it")
+                return Resource.Error(it)
+            }
+
+            Resource.Success(
+                CoverageResult(
+                    tile = payload.str("tile").orEmpty(),
+                    wasCached = payload.bool("cached") ?: false,
+                    mechanicCount = payload.int("mechanic_count") ?: 0
+                )
+            )
+        } catch (e: Exception) {
+            Diag.warn("ensureCoverage FAILED", e)
+            Resource.Error(e.toUserMessage(), e)
+        }
+    }
+
+    override suspend fun getServiceCatalog(): Resource<List<ServiceOption>> {
+        if (!SupabaseConfig.isConfigured) return Resource.Error(SupabaseConfig.SETUP_MESSAGE)
+
+        return try {
+            val rows = postgrest.from("services")
+                .select { order("sort_order", Order.ASCENDING) }
+                .data
+
+            Resource.Success(
+                json.parseToJsonElement(rows).asRows().mapNotNull { row ->
+                    val id = row.str("id") ?: return@mapNotNull null
+                    val name = row.str("name") ?: return@mapNotNull null
+                    ServiceOption(id, name)
+                }
+            )
+        } catch (e: Exception) {
+            Resource.Error(e.toUserMessage(), e)
+        }
+    }
+}

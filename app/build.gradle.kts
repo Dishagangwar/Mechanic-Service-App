@@ -21,13 +21,13 @@ fun secret(key: String): String =
         ?: ""
 
 android {
-    namespace = "com.example.mechanicserviceapp"
+    namespace = "com.instantmechanic.app"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.mechanicserviceapp"
+        applicationId = "com.instantmechanic.app"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -47,8 +47,24 @@ android {
         buildConfig = true
     }
 
+    // The Play upload key also comes from local.properties (or the environment), never
+    // from the repo. Without it the release build still runs, just unsigned - fine for
+    // checking it compiles, but Play will refuse the bundle.
+    val releaseStoreFile = secret("RELEASE_STORE_FILE")
+    signingConfigs {
+        if (releaseStoreFile.isNotEmpty()) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = secret("RELEASE_STORE_PASSWORD")
+                keyAlias = secret("RELEASE_KEY_ALIAS")
+                keyPassword = secret("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             optimization {
                 enable = false
             }

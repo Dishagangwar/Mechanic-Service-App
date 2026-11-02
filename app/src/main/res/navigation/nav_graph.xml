@@ -11,7 +11,7 @@
     -->
     <fragment
         android:id="@+id/authGateFragment"
-        android:name="com.example.mechanicserviceapp.ui.auth.AuthGateFragment"
+        android:name="com.instantmechanic.app.ui.auth.AuthGateFragment"
         tools:layout="@layout/fragment_auth_gate">
 
         <action
@@ -29,7 +29,7 @@
 
     <fragment
         android:id="@+id/signInFragment"
-        android:name="com.example.mechanicserviceapp.ui.auth.SignInFragment"
+        android:name="com.instantmechanic.app.ui.auth.SignInFragment"
         android:label="@string/sign_in_title"
         tools:layout="@layout/fragment_sign_in">
 
@@ -46,7 +46,7 @@
 
     <fragment
         android:id="@+id/signUpFragment"
-        android:name="com.example.mechanicserviceapp.ui.auth.SignUpFragment"
+        android:name="com.instantmechanic.app.ui.auth.SignUpFragment"
         android:label="@string/sign_up_title"
         tools:layout="@layout/fragment_sign_up">
 
@@ -60,7 +60,7 @@
 
     <fragment
         android:id="@+id/homeFragment"
-        android:name="com.example.mechanicserviceapp.ui.home.HomeFragment"
+        android:name="com.instantmechanic.app.ui.home.HomeFragment"
         android:label="@string/home_title"
         tools:layout="@layout/fragment_home">
 
@@ -94,13 +94,13 @@
     -->
     <fragment
         android:id="@+id/locationPickerFragment"
-        android:name="com.example.mechanicserviceapp.ui.location.LocationPickerFragment"
+        android:name="com.instantmechanic.app.ui.location.LocationPickerFragment"
         android:label="@string/location_title"
         tools:layout="@layout/fragment_location_picker" />
 
     <fragment
         android:id="@+id/garageFragment"
-        android:name="com.example.mechanicserviceapp.ui.garage.GarageFragment"
+        android:name="com.instantmechanic.app.ui.garage.GarageFragment"
         android:label="@string/garage_title"
         tools:layout="@layout/fragment_garage">
 
@@ -111,13 +111,13 @@
 
     <fragment
         android:id="@+id/myRequestsFragment"
-        android:name="com.example.mechanicserviceapp.ui.requests.MyRequestsFragment"
+        android:name="com.instantmechanic.app.ui.requests.MyRequestsFragment"
         android:label="@string/my_requests_title"
         tools:layout="@layout/fragment_my_requests" />
 
     <fragment
         android:id="@+id/mechanicDetailFragment"
-        android:name="com.example.mechanicserviceapp.ui.detail.MechanicDetailFragment"
+        android:name="com.instantmechanic.app.ui.detail.MechanicDetailFragment"
         android:label="@string/detail_title">
 
         <argument
@@ -131,7 +131,7 @@
 
     <fragment
         android:id="@+id/requestServiceFragment"
-        android:name="com.example.mechanicserviceapp.ui.request.RequestServiceFragment"
+        android:name="com.instantmechanic.app.ui.request.RequestServiceFragment"
         android:label="@string/request_title">
 
         <argument
