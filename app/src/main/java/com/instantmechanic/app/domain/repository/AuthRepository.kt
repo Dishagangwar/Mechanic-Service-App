@@ -24,4 +24,10 @@ interface AuthRepository {
     suspend fun signIn(email: String, password: String): Resource<AuthUser>
 
     suspend fun signOut(): Resource<Unit>
+
+    /**
+     * Permanently deletes the signed-in account and everything that hangs off it, then
+     * drops the local session. Play requires this for any app that creates accounts.
+     */
+    suspend fun deleteAccount(): Resource<Unit>
 }

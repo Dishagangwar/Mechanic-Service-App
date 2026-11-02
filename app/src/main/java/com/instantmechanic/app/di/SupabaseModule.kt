@@ -42,8 +42,8 @@ object SupabaseModule {
         // request carries the signed-in user's JWT, which is what the row level security
         // policies in supabase/migrations/0003_rls.sql are written against.
         install(Postgrest)
-        // Edge Functions. Only `nearby-import` is called, and only to pull in a region
-        // the backend has not seen before.
+        // Edge Functions: `nearby-import` to pull in a region the backend has not seen
+        // before, and `delete-account`, which needs the service_role key.
         install(Functions)
 
         httpEngine = OkHttp.create()

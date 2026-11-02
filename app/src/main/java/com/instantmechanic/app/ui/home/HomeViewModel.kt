@@ -254,6 +254,19 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /** Ends in the same place as signing out, so it reports through the same state. */
+    fun deleteAccount() {
+        if (_signOutState.value is SignOutState.InProgress) return
+        viewModelScope.launch {
+            _signOutState.value = SignOutState.InProgress
+            _signOutState.value = when (val result = authRepository.deleteAccount()) {
+                is Resource.Success -> SignOutState.Done
+                is Resource.Error -> SignOutState.Failed(result.message)
+                Resource.Loading -> SignOutState.InProgress
+            }
+        }
+    }
+
     fun onSignOutFailureShown() {
         _signOutState.value = SignOutState.Idle
     }

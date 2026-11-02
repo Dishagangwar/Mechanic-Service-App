@@ -12,6 +12,7 @@ import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
+import io.github.jan.supabase.functions.Functions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -31,11 +32,15 @@ class AuthRepositoryImpl @Inject constructor(
      * build nothing here may resolve it — every entry point checks
      * [SupabaseConfig.isConfigured] before touching this.
      */
-    private val authProvider: Lazy<Auth>
+    private val authProvider: Lazy<Auth>,
+    private val functionsProvider: Lazy<Functions>
 ) : AuthRepository {
 
     private val auth: Auth
         get() = authProvider.get()
+
+    private val functions: Functions
+        get() = functionsProvider.get()
 
     override val authState: Flow<AuthState> = flow {
         if (!SupabaseConfig.isConfigured) {
@@ -104,6 +109,23 @@ class AuthRepositoryImpl @Inject constructor(
             // trip to revoke tokens everywhere, and if that call fails the local session
             // survives and the user is stuck looking at a signed-in app they asked to leave.
             auth.signOut(SignOutScope.LOCAL)
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.toAuthUserMessage(), e)
+        }
+    }
+
+    override suspend fun deleteAccount(): Resource<Unit> {
+        if (!SupabaseConfig.isConfigured) return notConfigured()
+
+        return try {
+            // Deleting from auth.users needs the service_role key, so the server does it;
+            // the function only ever deletes whoever's token this request carries.
+            functions.invoke(function = "delete-account")
+            // The account is gone, so its tokens are dead. clearSession drops them locally
+            // without the logout round trip, which would now be rejected and leave the
+            // user stuck in a signed-in app with no account behind it.
+            auth.clearSession()
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.toAuthUserMessage(), e)

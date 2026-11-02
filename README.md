@@ -67,7 +67,7 @@ util/         Resource wrapper, error mapping, JSON field readers
 supabase/
   migrations/ Schema, views + RPCs, RLS, function grants
   seed/       Service catalog, generated OSM garages
-  functions/  nearby-import Edge Function
+  functions/  nearby-import and delete-account Edge Functions
   apply_all.sql   all of the above in one pasteable file
 ```
 
@@ -297,7 +297,18 @@ The app needs its schema before it can show anything. Two steps, both one-off:
    restrict the key to that API. For `ola`, get a key from the Ola Maps developer console.
    Leave both unset to stay on OpenStreetMap.
 
-3. **Schedule the coordinate purge** (only if you switch to a provider with a retention
+3. **Deploy account deletion.** Required for Google Play, which makes any app that
+   creates accounts let people delete them. The app's *Delete account* menu item calls it.
+
+   ```bash
+   supabase functions deploy delete-account
+   ```
+
+   It deletes the caller's own `auth.users` row (never one named in the request), and the
+   schema's foreign keys take care of the rest: profile, requests and reviews are removed,
+   and any garage they had claimed goes back to unclaimed.
+
+4. **Schedule the coordinate purge** (only if you switch to a provider with a retention
    limit, such as Google Places). Enable `pg_cron` under Database → Extensions, then run
    the `cron.schedule` call at the bottom of `supabase/migrations/0002_views_rpc.sql`.
 

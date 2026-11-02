@@ -195,6 +195,11 @@ class HomeFragment : Fragment() {
                     true
                 }
 
+                R.id.action_delete_account -> {
+                    confirmDeleteAccount()
+                    true
+                }
+
                 else -> false
             }
         }
@@ -206,6 +211,15 @@ class HomeFragment : Fragment() {
             .setMessage(R.string.sign_out_message)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.sign_out) { _, _ -> viewModel.signOut() }
+            .show()
+    }
+
+    private fun confirmDeleteAccount() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.delete_account_title)
+            .setMessage(R.string.delete_account_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.delete_account_confirm) { _, _ -> viewModel.deleteAccount() }
             .show()
     }
 

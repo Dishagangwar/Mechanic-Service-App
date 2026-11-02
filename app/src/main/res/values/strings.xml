@@ -155,6 +155,12 @@
     <string name="sign_out_message">You\'ll need to sign in again to book a service.</string>
     <string name="cancel">Cancel</string>
 
+    <!-- Delete account -->
+    <string name="delete_account">Delete account</string>
+    <string name="delete_account_title">Delete your account?</string>
+    <string name="delete_account_message">This permanently deletes your account, your profile and all your service requests. Any garage you manage will be released. This can\'t be undone.</string>
+    <string name="delete_account_confirm">Delete</string>
+
     <string name="setup_required_title">Supabase not configured</string>
 
     <!-- States -->
